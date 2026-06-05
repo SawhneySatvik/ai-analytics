@@ -1,0 +1,81 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  /* Light — warm cream, bluer accent (mirrors the resume site's default theme). */
+  :root {
+    --bg: 36 20% 92%;
+    --bg-elev: 36 16% 87%;
+    --fg: 220 25% 12%;
+    --fg-muted: 220 14% 36%;
+    --border: 220 18% 74%;
+    --accent: 222 88% 44%;
+    --accent-soft: 222 80% 88%;
+    --success: 158 50% 36%;
+    color-scheme: light;
+  }
+
+  /* Dark — near-black slate, bright cyan accent. App defaults to this. */
+  .dark {
+    --bg: 222 18% 6%;
+    --bg-elev: 222 16% 10%;
+    --fg: 220 15% 95%;
+    --fg-muted: 220 12% 62%;
+    --border: 220 12% 18%;
+    --accent: 217 95% 68%;
+    --accent-soft: 217 70% 26%;
+    --success: 158 64% 48%;
+    color-scheme: dark;
+  }
+
+  * {
+    border-color: hsl(var(--border));
+  }
+
+  html {
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+
+  body {
+    background: hsl(var(--bg));
+    color: hsl(var(--fg));
+    font-family: var(--font-geist-sans), system-ui, sans-serif;
+    font-feature-settings: "cv11", "ss01";
+  }
+
+  /* Thin, theme-aware scrollbars for the long tables/lists. */
+  ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: hsl(var(--border));
+    border-radius: 999px;
+    border: 2px solid hsl(var(--bg));
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+}
+
+@layer utilities {
+  .container-wide {
+    width: 100%;
+    max-width: 1400px;
+    margin-inline: auto;
+    padding-inline: 1.5rem;
+  }
+  .tabular {
+    font-variant-numeric: tabular-nums;
+  }
+  /* Recharts: make the focus/active outlines disappear and inherit theme. */
+  .recharts-surface:focus,
+  .recharts-wrapper:focus {
+    outline: none;
+  }
+  .recharts-cartesian-axis-tick-value {
+    fill: hsl(var(--fg-muted));
+  }
+}
