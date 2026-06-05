@@ -9,7 +9,6 @@ import type { SummaryResponse } from "@/lib/dto";
 import type { ModelRecord } from "@/lib/types";
 import { dailyModelSeries, fmtDayLabel } from "@/lib/chartData";
 import { fmtCompact, fmtNum, fmtPct, fmtUSD } from "@/lib/format";
-import { modelColor, modelLabel } from "@/lib/models";
 
 const tokTotal = (m: ModelRecord) =>
   m.usage.input + m.usage.output + m.usage.cacheCreate + m.usage.cacheRead;
@@ -20,19 +19,16 @@ export default function ModelsPage() {
   if (!data) return <Skeleton className="h-96" />;
 
   const { models, daily, speeds, summary } = data;
-  const { data: modelData, series: modelSeries } = dailyModelSeries(
-    daily,
-    models.map((m) => m.model),
-  );
+  const { data: modelData, series: modelSeries } = dailyModelSeries(daily, models);
 
   const tokenShare = models.map((m) => ({
-    name: modelLabel(m.model),
+    name: m.label,
     value: tokTotal(m),
-    color: modelColor(m.model),
+    color: m.color,
   }));
   const costShare = models
     .filter((m) => m.cost > 0)
-    .map((m) => ({ name: modelLabel(m.model), value: m.cost, color: modelColor(m.model) }));
+    .map((m) => ({ name: m.label, value: m.cost, color: m.color }));
 
   const columns: Column<ModelRecord>[] = [
     {
@@ -40,10 +36,12 @@ export default function ModelsPage() {
       header: "Model",
       render: (m) => (
         <span className="flex items-center gap-2 font-medium text-fg">
-          <span className="h-2.5 w-2.5 rounded-full" style={{ background: modelColor(m.model) }} />
-          {modelLabel(m.model)}
+          <span className="h-2.5 w-2.5 rounded-full" style={{ background: m.color }} />
+          {m.label}
           {!m.priced && m.model !== "synthetic" && (
-            <span className="font-mono text-[9px] uppercase text-amber-500">unpriced</span>
+            <span className="font-mono text-[9px] uppercase text-amber-500">
+              {m.provider === "anthropic" ? "unpriced" : "est. rate"}
+            </span>
           )}
         </span>
       ),
@@ -70,7 +68,7 @@ export default function ModelsPage() {
 
   return (
     <div className="space-y-5">
-      <PageHeader title="Models" description="Token, cost and adoption breakdown per Claude model" />
+      <PageHeader title="Models" description="Token, cost and adoption breakdown per model, across tools" />
 
       <div className="grid gap-5 lg:grid-cols-3">
         <Card className="p-5 lg:col-span-2">
@@ -91,7 +89,7 @@ export default function ModelsPage() {
 
       <Card className="p-5">
         <PanelTitle title="Per-model detail" />
-        <Table columns={columns} rows={models} rowKey={(m) => m.model} />
+        <Table columns={columns} rows={models} rowKey={(m) => m.key} />
       </Card>
 
       <Card className="p-5">

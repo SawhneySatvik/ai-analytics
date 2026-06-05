@@ -7,6 +7,7 @@ import {
   Boxes,
   Database,
   FolderGit2,
+  Layers,
   LayoutDashboard,
   MessagesSquare,
   Moon,
@@ -24,6 +25,7 @@ import { relativeTime } from "@/lib/format";
 
 const NAV = [
   { href: "/", label: "Overview", icon: LayoutDashboard },
+  { href: "/sources", label: "Tools", icon: Layers },
   { href: "/models", label: "Models", icon: Boxes },
   { href: "/projects", label: "Projects", icon: FolderGit2 },
   { href: "/sessions", label: "Sessions", icon: MessagesSquare },
@@ -138,7 +140,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
               <Activity className="h-4 w-4" />
             </div>
             <div>
-              <div className="text-sm font-semibold tracking-tight text-fg">Claude Usage</div>
+              <div className="text-sm font-semibold tracking-tight text-fg">CLI Usage</div>
               <div className="font-mono text-[9px] uppercase tracking-[0.18em] text-fg-muted">
                 local analytics
               </div>
@@ -147,7 +149,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
         </div>
         <NavRail />
         <div className="mt-auto px-2 pt-4 font-mono text-[9px] uppercase tracking-[0.14em] text-fg-muted">
-          reads ~/.claude · on-device
+          reads ~/.claude · ~/.codex · on-device
         </div>
       </aside>
 
@@ -157,7 +159,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
           <div className="flex items-center justify-between gap-4 px-4 py-3 lg:px-6">
             <div className="flex items-center gap-2 lg:hidden">
               <Activity className="h-4 w-4 text-accent" />
-              <span className="text-sm font-semibold text-fg">Claude Usage</span>
+              <span className="text-sm font-semibold text-fg">CLI Usage</span>
             </div>
             <div className="ml-auto flex items-center gap-2">
               <RefreshButton />

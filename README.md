@@ -1,10 +1,14 @@
-# Claude Usage Analytics
+# Coding CLI Usage Analytics
 
-A local-first dashboard over your `~/.claude` usage data — tokens, cost (estimated),
-models, projects, sessions, tools, cache behavior, and activity patterns.
+A local-first dashboard over your coding-CLI usage — tokens, cost (estimated),
+models, projects, sessions, tools, cache behavior, and activity patterns. It reads
+**Claude Code** (`~/.claude`) and **OpenAI Codex CLI** (`~/.codex`), with a `source`
+filter and per-tool breakdown to compare them.
 
-It reads the Claude Code transcripts on **your machine** at request time and is not
-meant to be deployed. Your usage data never leaves the device.
+It reads the transcripts on **your machine** at request time and is not meant to be
+deployed. Your usage data never leaves the device. (Because the server reads the
+local filesystem, hosting it — e.g. on Vercel — would *not* let other people see
+their own data; it stays a per-machine tool.)
 
 ## Run
 
@@ -18,27 +22,38 @@ npm run dev      # http://localhost:4477
 
 ## How it works
 
-- **Ingestion** (`src/lib/ingest.ts`) streams every `~/.claude/projects/**/*.jsonl`
-  transcript (including nested `subagents/`), then:
-  - dedups resumed/forked lines by `uuid`,
-  - folds the multiple JSONL lines of one response into a single record per
+- **Ingestion** (`src/lib/ingest.ts`) is a source-agnostic orchestrator: each CLI
+  tool has its own loader under `src/lib/sources/` that discovers its files and
+  normalizes them into one shared `MessageRecord` shape, tagged with a `source`.
+  - **Claude** (`sources/claude.ts`) streams every `~/.claude/projects/**/*.jsonl`
+    transcript (including nested `subagents/`), dedups resumed/forked lines by
+    `uuid`, folds the multiple JSONL lines of one response into a single record per
     `message.id` (Claude writes one line per content block, all repeating the same
-    `usage` — naive summing overcounts output ~4.7×),
-  - reads the final `message.usage` directly (never sums `iterations[]`),
-  - counts subagent/sidechain tokens, attributed to the parent session/project.
+    `usage` — naive summing overcounts output ~4.7×), reads the final
+    `message.usage` directly, and counts subagent/sidechain tokens.
+  - **Codex** (`sources/codex.ts`) reads `~/.codex/sessions/**/rollout-*.jsonl` and
+    derives per-turn usage by **diffing the cumulative `total_token_usage`** between
+    `token_count` events (the per-event `last_token_usage` is unreliable on older
+    builds), reconciling exactly to each session's final total. The model name comes
+    from the `turn_context` lines.
 - **Caching** (`src/lib/cache.ts`) parses once and reuses the result until the files'
   mtime/size signature changes. The **Refresh** button forces a rebuild.
 - **Aggregation** (`src/lib/aggregate.ts`) computes all summaries/breakdowns from the
   in-memory records, scoped by the global filters (date range, project, model,
   branch, main-vs-subagent).
-- **Cost** (`src/lib/pricing.ts`) is the single editable source of dollar estimates.
-  Local transcripts record `costUSD: 0`, so cost is computed from token counts.
+- **Cost** (`src/lib/pricing.ts`) is the single editable source of dollar estimates
+  for every tool — `PRICING` for Claude models, `OPENAI_PRICING` for Codex/GPT
+  models. Transcripts record no usable cost, so it is computed from token counts.
   ⚠️ The rates are placeholders patterned on public pricing ratios — update them to
   the exact public `$/MTok` before trusting absolute dollar figures.
 
 ## Config
 
-- `CLAUDE_HOME` — point at an alternate data dir (defaults to `~/.claude`).
+- `CLAUDE_HOME` — alternate Claude data dir (defaults to `~/.claude`).
+- `CODEX_HOME` — alternate Codex data dir (defaults to `~/.codex`).
+- `ANALYTICS_SOURCES` — comma-separated list of tools to ingest
+  (e.g. `claude,codex`; defaults to all). Set `ANALYTICS_SOURCES=claude` to get the
+  original Claude-only view.
 
 ## Notes
 
