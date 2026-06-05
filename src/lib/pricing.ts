@@ -1,4 +1,4 @@
-import type { CanonicalModel, TokenUsage } from "./types";
+import type { CanonicalModel, Provider, TokenUsage } from "./types";
 
 // ───────────────────────────────────────────────────────────────────────────
 // COST MODEL — the single source of truth for dollar estimates.
@@ -69,4 +69,73 @@ export function uncachedCostUSD(u: TokenUsage, model: CanonicalModel): number {
 
 export function isPriced(model: CanonicalModel): boolean {
   return PRICING[model] != null;
+}
+
+// ───────────────────────────────────────────────────────────────────────────
+// NON-CLAUDE COST — OpenAI / Codex pricing.
+//
+// Codex transcripts record token counts but no cost, so (like Claude) we
+// estimate from tokens. OpenAI bills total output (reasoning included) at the
+// output rate and cached input at a reduced rate; there is no cache-write
+// bucket, so those rates are 0.
+//
+// ⚠️  EDITABLE PLACEHOLDERS patterned on public GPT-5-class pricing ratios.
+//     Update to the exact public $/MTok before trusting absolute dollars.
+// ───────────────────────────────────────────────────────────────────────────
+
+const OPENAI_DEFAULT_RATES: ModelRates = {
+  input: 1.25,
+  output: 10,
+  cacheWrite5m: 0,
+  cacheWrite1h: 0,
+  cacheRead: 0.125,
+};
+
+export const OPENAI_PRICING: Record<string, ModelRates> = {
+  "gpt-5.5": { input: 1.25, output: 10, cacheWrite5m: 0, cacheWrite1h: 0, cacheRead: 0.125 },
+  "gpt-5.4": { input: 1.25, output: 10, cacheWrite5m: 0, cacheWrite1h: 0, cacheRead: 0.125 },
+  "gpt-5": { input: 1.25, output: 10, cacheWrite5m: 0, cacheWrite1h: 0, cacheRead: 0.125 },
+  "gpt-5-codex": { input: 1.25, output: 10, cacheWrite5m: 0, cacheWrite1h: 0, cacheRead: 0.125 },
+  "gpt-5-mini": { input: 0.25, output: 2, cacheWrite5m: 0, cacheWrite1h: 0, cacheRead: 0.025 },
+};
+
+function normalizeOpenAIModel(rawModel: string): string {
+  return rawModel.trim().toLowerCase().replace(/-\d{8}$/, "");
+}
+
+function openaiRates(rawModel: string): ModelRates {
+  return OPENAI_PRICING[normalizeOpenAIModel(rawModel)] ?? OPENAI_DEFAULT_RATES;
+}
+
+/** True when an EXACT (non-default) rate is on file for this model. */
+export function isPricedFor(provider: Provider, model: CanonicalModel, rawModel: string): boolean {
+  if (provider === "anthropic") return isPriced(model);
+  return OPENAI_PRICING[normalizeOpenAIModel(rawModel)] != null;
+}
+
+/** Estimated USD for one record's usage, dispatched on the model's provider. */
+export function estimateCostUSD(
+  u: TokenUsage,
+  provider: Provider,
+  model: CanonicalModel,
+  rawModel: string,
+): number {
+  if (provider === "anthropic") return messageCostUSD(u, model);
+  // OpenAI / Codex (and OpenCode openai-family fallback): cached input billed at
+  // the reduced cacheRead rate; output already includes reasoning tokens.
+  const r = openaiRates(rawModel);
+  return (u.input * r.input + u.output * r.output + u.cacheRead * r.cacheRead) / MILLION;
+}
+
+/** uncachedCostUSD generalized across providers (for "cache savings"). */
+export function uncachedCostFor(
+  u: TokenUsage,
+  provider: Provider,
+  model: CanonicalModel,
+  rawModel: string,
+): number {
+  if (provider === "anthropic") return uncachedCostUSD(u, model);
+  const r = openaiRates(rawModel);
+  const asInput = u.input + u.cacheCreate + u.cacheRead;
+  return (asInput * r.input + u.output * r.output) / MILLION;
 }

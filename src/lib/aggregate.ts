@@ -1,6 +1,13 @@
 import { projectDisplayName } from "./paths";
-import { MODEL_ORDER } from "./models";
-import { isPriced, uncachedCostUSD } from "./pricing";
+import {
+  MODEL_ORDER,
+  SOURCE_ORDER,
+  modelColorFor,
+  modelKey,
+  sourceColor,
+  sourceLabel,
+} from "./models";
+import { isPricedFor, uncachedCostFor } from "./pricing";
 import {
   addUsage,
   billableExCacheRead,
@@ -15,11 +22,19 @@ import type {
   HistoryEntry,
   MessageRecord,
   ModelRecord,
+  ModelTag,
   ProjectRecord,
   SessionMeta,
   SessionRecord,
+  Source,
   TokenUsage,
 } from "./types";
+
+/** Stable grouping key + display tag for a message's model (any source). */
+function tagOf(m: MessageRecord): ModelTag {
+  const key = modelKey(m.provider, m.model, m.rawModel);
+  return { key, label: m.modelLabel, color: modelColorFor(m.provider, m.model, key) };
+}
 
 /** YYYY-MM-DD in the machine's local timezone (matches user intuition). */
 export function dateKey(ts: number): string {
@@ -33,6 +48,7 @@ export function applyFilters(messages: MessageRecord[], f: Filters): MessageReco
     if (f.from != null && m.ts < f.from) return false;
     if (f.to != null && m.ts > f.to) return false;
     if (f.project && m.projectPath !== f.project) return false;
+    if (f.source && m.source !== f.source) return false;
     if (f.model && m.model !== f.model) return false;
     if (f.branch && m.gitBranch !== f.branch) return false;
     if (f.scope === "main" && m.isSidechain) return false;
@@ -82,7 +98,7 @@ export function summarize(messages: MessageRecord[]): Summary {
   for (const m of messages) {
     addUsage(usage, m.usage);
     cost += m.cost;
-    uncached += uncachedCostUSD(m.usage, m.model);
+    uncached += uncachedCostFor(m.usage, m.provider, m.model, m.rawModel);
     toolCallCount += m.toolCalls.length;
     const tt = totalTokens(m.usage);
     if (m.isSidechain) {
@@ -140,6 +156,7 @@ export function dailySeries(messages: MessageRecord[]): DailyRecord[] {
         toolCallCount: 0,
         sessionCount: 0,
         tokensByModel: {},
+        tokensBySource: {},
         _sessions: new Set<string>(),
       };
       map.set(date, d);
@@ -149,7 +166,10 @@ export function dailySeries(messages: MessageRecord[]): DailyRecord[] {
     d.messageCount++;
     d.toolCallCount += m.toolCalls.length;
     d._sessions.add(m.sessionId);
-    d.tokensByModel[m.model] = (d.tokensByModel[m.model] ?? 0) + totalTokens(m.usage);
+    const tt = totalTokens(m.usage);
+    const key = modelKey(m.provider, m.model, m.rawModel);
+    d.tokensByModel[key] = (d.tokensByModel[key] ?? 0) + tt;
+    d.tokensBySource[m.source] = (d.tokensBySource[m.source] ?? 0) + tt;
   }
   const out = [...map.values()].map((d) => {
     d.sessionCount = d._sessions.size;
@@ -164,20 +184,80 @@ export function dailySeries(messages: MessageRecord[]): DailyRecord[] {
 // ── breakdowns ───────────────────────────────────────────────────────────────
 
 export function modelBreakdown(messages: MessageRecord[]): ModelRecord[] {
-  const map = new Map<CanonicalModel, ModelRecord>();
+  const map = new Map<string, ModelRecord>();
   for (const m of messages) {
-    let r = map.get(m.model);
+    const key = modelKey(m.provider, m.model, m.rawModel);
+    let r = map.get(key);
     if (!r) {
-      r = { model: m.model, messageCount: 0, usage: emptyUsage(), cost: 0, priced: isPriced(m.model) };
-      map.set(m.model, r);
+      r = {
+        key,
+        model: m.model,
+        label: m.modelLabel,
+        color: modelColorFor(m.provider, m.model, key),
+        source: m.source,
+        provider: m.provider,
+        messageCount: 0,
+        usage: emptyUsage(),
+        cost: 0,
+        priced: isPricedFor(m.provider, m.model, m.rawModel),
+      };
+      map.set(key, r);
     }
     r.messageCount++;
     addUsage(r.usage, m.usage);
     r.cost += m.cost;
   }
-  return [...map.values()].sort(
-    (a, b) => MODEL_ORDER.indexOf(a.model) - MODEL_ORDER.indexOf(b.model),
-  );
+  // Claude models keep their canonical order; other providers follow, by tokens.
+  return [...map.values()].sort((a, b) => {
+    const ai = a.provider === "anthropic" ? MODEL_ORDER.indexOf(a.model) : Infinity;
+    const bi = b.provider === "anthropic" ? MODEL_ORDER.indexOf(b.model) : Infinity;
+    if (ai !== bi) return ai - bi;
+    return totalTokens(b.usage) - totalTokens(a.usage);
+  });
+}
+
+// ── source (CLI tool) breakdown ──────────────────────────────────────────────
+
+export interface SourceRecord {
+  source: Source;
+  label: string;
+  color: string;
+  messageCount: number;
+  sessionCount: number;
+  usage: TokenUsage;
+  cost: number;
+}
+
+export function sourceBreakdown(messages: MessageRecord[]): SourceRecord[] {
+  const map = new Map<Source, SourceRecord & { _sessions: Set<string> }>();
+  for (const m of messages) {
+    let r = map.get(m.source);
+    if (!r) {
+      r = {
+        source: m.source,
+        label: sourceLabel(m.source),
+        color: sourceColor(m.source),
+        messageCount: 0,
+        sessionCount: 0,
+        usage: emptyUsage(),
+        cost: 0,
+        _sessions: new Set<string>(),
+      };
+      map.set(m.source, r);
+    }
+    r.messageCount++;
+    addUsage(r.usage, m.usage);
+    r.cost += m.cost;
+    r._sessions.add(m.sessionId);
+  }
+  const out = [...map.values()].map((r) => {
+    r.sessionCount = r._sessions.size;
+    const { _sessions, ...rest } = r;
+    void _sessions;
+    return rest;
+  });
+  out.sort((a, b) => SOURCE_ORDER.indexOf(a.source) - SOURCE_ORDER.indexOf(b.source));
+  return out;
 }
 
 export function projectBreakdown(messages: MessageRecord[]): ProjectRecord[] {
@@ -227,7 +307,7 @@ export function sessionList(
 ): SessionRecord[] {
   const map = new Map<
     string,
-    SessionRecord & { _models: Set<CanonicalModel> }
+    SessionRecord & { _models: Map<string, ModelTag> }
   >();
   for (const m of messages) {
     let s = map.get(m.sessionId);
@@ -236,6 +316,7 @@ export function sessionList(
       const projectPath = meta?.projectPath || m.projectPath;
       s = {
         sessionId: m.sessionId,
+        source: meta?.source ?? m.source,
         projectPath,
         projectName: projectDisplayName(projectPath),
         firstTs: meta?.firstTs || (m.ts || 0),
@@ -250,7 +331,7 @@ export function sessionList(
         subagentMessageCount: 0,
         isResumed: (meta?.fileCount ?? 1) > 1,
         title: meta?.title ?? null,
-        _models: new Set<CanonicalModel>(),
+        _models: new Map<string, ModelTag>(),
       };
       map.set(m.sessionId, s);
     }
@@ -258,7 +339,8 @@ export function sessionList(
     s.toolCallCount += m.toolCalls.length;
     addUsage(s.usage, m.usage);
     s.cost += m.cost;
-    s._models.add(m.model);
+    const tag = tagOf(m);
+    if (!s._models.has(tag.key)) s._models.set(tag.key, tag);
     if (m.isSidechain) s.subagentMessageCount++;
     if (m.ts > 0) {
       if (!s.firstTs || m.ts < s.firstTs) s.firstTs = m.ts;
@@ -267,8 +349,8 @@ export function sessionList(
   }
   const out = [...map.values()].map((s) => {
     s.durationMs = s.lastTs && s.firstTs ? Math.max(0, s.lastTs - s.firstTs) : 0;
-    s.models = [...s._models].sort(
-      (a, b) => MODEL_ORDER.indexOf(a) - MODEL_ORDER.indexOf(b),
+    s.models = [...s._models.values()].sort(
+      (a, b) => MODEL_ORDER.indexOf(a.key as CanonicalModel) - MODEL_ORDER.indexOf(b.key as CanonicalModel),
     );
     const { _models, ...rest } = s;
     void _models;
@@ -480,6 +562,7 @@ export function sessionTimeline(messages: MessageRecord[]): TimelinePoint[] {
 
 export interface FilterOptions {
   projects: { path: string; name: string; tokens: number }[];
+  sources: { source: Source; label: string }[];
   models: CanonicalModel[];
   branches: string[];
   minTs: number | null;
@@ -492,6 +575,7 @@ export function filterOptions(messages: MessageRecord[]): FilterOptions {
     name: p.projectName,
     tokens: totalTokens(p.usage),
   }));
+  const sources = sourceBreakdown(messages).map((s) => ({ source: s.source, label: s.label }));
   const models = modelBreakdown(messages).map((m) => m.model);
   const branchSet = new Set<string>();
   let minTs: number | null = null;
@@ -505,6 +589,7 @@ export function filterOptions(messages: MessageRecord[]): FilterOptions {
   }
   return {
     projects,
+    sources,
     models,
     branches: [...branchSet].sort(),
     minTs,

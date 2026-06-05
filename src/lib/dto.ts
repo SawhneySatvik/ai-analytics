@@ -10,6 +10,7 @@ import type {
   Summary,
   ToolStat,
   SubagentStat,
+  SourceRecord,
   HeatCell,
   FilterOptions,
   TimelinePoint,
@@ -65,6 +66,7 @@ export interface SummaryResponse {
   summary: Summary;
   daily: DailyRecord[];
   models: ModelRecord[];
+  sources: SourceRecord[];
   projects: ProjectRecord[];
   tools: ToolSummary;
   subagents: SubagentStat[];
