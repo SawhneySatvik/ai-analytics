@@ -2,8 +2,9 @@
 
 A local-first dashboard over your coding-CLI usage — tokens, cost (estimated),
 models, projects, sessions, tools, cache behavior, and activity patterns. It reads
-**Claude Code** (`~/.claude`) and **OpenAI Codex CLI** (`~/.codex`), with a `source`
-filter and per-tool breakdown to compare them.
+**Claude Code** (`~/.claude`), **OpenAI Codex CLI** (`~/.codex`), and **OpenCode**
+(`~/.local/share/opencode`), with a `source` filter and per-tool breakdown to
+compare them.
 
 It reads the transcripts on **your machine** at request time and is not meant to be
 deployed. Your usage data never leaves the device. (Because the server reads the
@@ -36,6 +37,11 @@ npm run dev      # http://localhost:4477
     `token_count` events (the per-event `last_token_usage` is unreliable on older
     builds), reconciling exactly to each session's final total. The model name comes
     from the `turn_context` lines.
+  - **OpenCode** (`sources/opencode.ts`) reads the SQLite DB at
+    `~/.local/share/opencode/opencode.db` via Node's built-in `node:sqlite` (no extra
+    dependency), one record per assistant `message` from its `data` JSON. OpenCode
+    persists a real USD `cost`, so that recorded value is used as-is instead of an
+    estimate (`0` for free/local models is correct).
 - **Caching** (`src/lib/cache.ts`) parses once and reuses the result until the files'
   mtime/size signature changes. The **Refresh** button forces a rebuild.
 - **Aggregation** (`src/lib/aggregate.ts`) computes all summaries/breakdowns from the
@@ -51,9 +57,11 @@ npm run dev      # http://localhost:4477
 
 - `CLAUDE_HOME` — alternate Claude data dir (defaults to `~/.claude`).
 - `CODEX_HOME` — alternate Codex data dir (defaults to `~/.codex`).
+- `OPENCODE_HOME` — alternate OpenCode data dir (defaults to
+  `~/.local/share/opencode`).
 - `ANALYTICS_SOURCES` — comma-separated list of tools to ingest
-  (e.g. `claude,codex`; defaults to all). Set `ANALYTICS_SOURCES=claude` to get the
-  original Claude-only view.
+  (e.g. `claude,codex,opencode`; defaults to all). Set `ANALYTICS_SOURCES=claude`
+  to get the original Claude-only view.
 
 ## Notes
 

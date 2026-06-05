@@ -27,6 +27,16 @@ export const CODEX_SESSIONS_DIR = path.join(CODEX_HOME, "sessions");
 export const CODEX_HISTORY_FILE = path.join(CODEX_HOME, "history.jsonl");
 
 /**
+ * OpenCode data dir (override with OPENCODE_HOME). Sessions/messages live in a
+ * single SQLite database opencode.db (with -wal/-shm sidecars while live).
+ */
+export const OPENCODE_DATA_DIR = envDir(
+  "OPENCODE_HOME",
+  path.join(os.homedir(), ".local", "share", "opencode"),
+);
+export const OPENCODE_DB_FILE = path.join(OPENCODE_DATA_DIR, "opencode.db");
+
+/**
  * Which sources to ingest. ANALYTICS_SOURCES is a comma-separated list
  * ("claude,codex"); defaults to all known sources. Unknown entries are ignored.
  */

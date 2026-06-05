@@ -5,8 +5,12 @@
 
 import type { HistoryEntry, MessageRecord, SessionMeta, Source } from "../types";
 
-/** A normalized record before cost is materialized (cost is added centrally). */
-export type RawMessage = Omit<MessageRecord, "cost">;
+/**
+ * A normalized record before cost is materialized (cost is added centrally in
+ * ingest.ts). A loader may set `recordedCost` when the tool persists a real USD
+ * cost on disk (OpenCode); ingest prefers it over the token estimate.
+ */
+export type RawMessage = Omit<MessageRecord, "cost"> & { recordedCost?: number };
 
 /** Files that affect the cache signature for a source (mtime/size are hashed). */
 export interface DiscoverResult {
