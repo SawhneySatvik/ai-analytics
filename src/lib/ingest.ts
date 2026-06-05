@@ -61,20 +61,27 @@ export async function buildSnapshot(discovered?: DiscoverResult[]): Promise<Snap
     malformedLineCount += res.diagnostics.malformedLineCount;
   }
 
-  // materialize MessageRecords + cost + unpriced-model warnings
+  // materialize MessageRecords + cost + unpriced-model warnings.
+  // A loader may carry a real recorded cost (OpenCode); prefer it over the
+  // token estimate, and skip the unpriced warning in that case.
   const unpriced = new Map<string, { provider: Provider; label: string; tokens: number }>();
   const messages: MessageRecord[] = raw.map((g) => {
-    const cost = estimateCostUSD(g.usage, g.provider, g.model, g.rawModel);
-    if (!isPricedFor(g.provider, g.model, g.rawModel) && g.model !== "synthetic") {
-      const tt = totalTokens(g.usage);
+    const { recordedCost, ...rest } = g;
+    const cost = recordedCost ?? estimateCostUSD(rest.usage, rest.provider, rest.model, rest.rawModel);
+    if (
+      recordedCost == null &&
+      !isPricedFor(rest.provider, rest.model, rest.rawModel) &&
+      rest.model !== "synthetic"
+    ) {
+      const tt = totalTokens(rest.usage);
       if (tt > 0) {
-        const key = `${g.provider}:${g.modelLabel}`;
-        const e = unpriced.get(key) ?? { provider: g.provider, label: g.modelLabel, tokens: 0 };
+        const key = `${rest.provider}:${rest.modelLabel}`;
+        const e = unpriced.get(key) ?? { provider: rest.provider, label: rest.modelLabel, tokens: 0 };
         e.tokens += tt;
         unpriced.set(key, e);
       }
     }
-    return { ...g, cost };
+    return { ...rest, cost };
   });
   messages.sort((a, b) => a.ts - b.ts);
 

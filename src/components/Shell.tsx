@@ -149,7 +149,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
         </div>
         <NavRail />
         <div className="mt-auto px-2 pt-4 font-mono text-[9px] uppercase tracking-[0.14em] text-fg-muted">
-          reads ~/.claude · ~/.codex · on-device
+          reads ~/.claude · ~/.codex · opencode · on-device
         </div>
       </aside>
 
