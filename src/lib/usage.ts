@@ -8,6 +8,7 @@ export function emptyUsage(): TokenUsage {
     cacheCreate1h: 0,
     cacheCreate: 0,
     cacheRead: 0,
+    reasoning: 0,
     webSearch: 0,
     webFetch: 0,
   };
@@ -21,6 +22,7 @@ export function addUsage(target: TokenUsage, src: TokenUsage): TokenUsage {
   target.cacheCreate1h += src.cacheCreate1h;
   target.cacheCreate += src.cacheCreate;
   target.cacheRead += src.cacheRead;
+  target.reasoning += src.reasoning;
   target.webSearch += src.webSearch;
   target.webFetch += src.webFetch;
   return target;
@@ -43,12 +45,17 @@ export function extractUsage(raw: unknown): TokenUsage {
     cacheCreate1h: num(cc.ephemeral_1h_input_tokens),
     cacheCreate: num(u.cache_creation_input_tokens),
     cacheRead: num(u.cache_read_input_tokens),
+    reasoning: 0, // Claude folds thinking tokens into output; no separate count
     webSearch: num(stu.web_search_requests),
     webFetch: num(stu.web_fetch_requests),
   };
 }
 
-/** All token types summed (input + output + cache create + cache read). */
+/**
+ * All token types summed (input + output + cache create + cache read).
+ * Deliberately excludes `reasoning` (a sub-count already inside `output` for the
+ * providers that report it) so totals stay consistent across sources.
+ */
 export function totalTokens(u: TokenUsage): number {
   return u.input + u.output + u.cacheCreate + u.cacheRead;
 }

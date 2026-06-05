@@ -1,6 +1,6 @@
 // Pure, client-safe transforms from API records to chart-friendly rows.
-import type { CanonicalModel, DailyRecord } from "./types";
-import { MODEL_ORDER, modelColor, modelLabel } from "./models";
+import type { DailyRecord, ModelRecord } from "./types";
+import type { SourceRecord } from "./aggregate";
 
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
@@ -49,13 +49,24 @@ export function flattenDaily(daily: DailyRecord[]): DailyRow[] {
   });
 }
 
-export function dailyModelSeries(daily: DailyRecord[], models: CanonicalModel[]) {
-  const present = (models.length ? models : MODEL_ORDER).filter((m) => m !== "unknown" || true);
+type SeriesModel = Pick<ModelRecord, "key" | "label" | "color">;
+
+export function dailyModelSeries(daily: DailyRecord[], models: SeriesModel[]) {
   const data = daily.map((d) => {
     const row: Record<string, unknown> = { date: d.date };
-    for (const m of present) row[m] = d.tokensByModel[m] ?? 0;
+    for (const m of models) row[m.key] = d.tokensByModel[m.key] ?? 0;
     return row;
   });
-  const series = present.map((m) => ({ key: m, name: modelLabel(m), color: modelColor(m) }));
+  const series = models.map((m) => ({ key: m.key, name: m.label, color: m.color }));
+  return { data, series };
+}
+
+export function dailySourceSeries(daily: DailyRecord[], sources: SourceRecord[]) {
+  const data = daily.map((d) => {
+    const row: Record<string, unknown> = { date: d.date };
+    for (const s of sources) row[s.source] = d.tokensBySource[s.source] ?? 0;
+    return row;
+  });
+  const series = sources.map((s) => ({ key: s.source, name: s.label, color: s.color }));
   return { data, series };
 }

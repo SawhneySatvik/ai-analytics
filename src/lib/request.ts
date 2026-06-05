@@ -1,4 +1,4 @@
-import type { CanonicalModel, Filters } from "./types";
+import type { CanonicalModel, Filters, Source } from "./types";
 
 const MODELS = new Set<CanonicalModel>([
   "opus-4-8",
@@ -8,6 +8,8 @@ const MODELS = new Set<CanonicalModel>([
   "synthetic",
   "unknown",
 ]);
+
+const SOURCES = new Set<Source>(["claude", "codex", "opencode"]);
 
 const DAY_MS = 86_400_000;
 
@@ -32,6 +34,9 @@ export function parseFilters(searchParams: URLSearchParams): Filters {
 
   const project = searchParams.get("project");
   if (project) f.project = project;
+
+  const source = searchParams.get("source");
+  if (source && SOURCES.has(source as Source)) f.source = source as Source;
 
   const model = searchParams.get("model");
   if (model && MODELS.has(model as CanonicalModel)) f.model = model as CanonicalModel;

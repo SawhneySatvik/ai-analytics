@@ -10,7 +10,7 @@ import { BarList, DonutChart, MultiLineChart, StackedAreaChart, TOKEN_SERIES } f
 import type { SessionDetailResponse } from "@/lib/dto";
 import { cacheHitRate, totalTokens } from "@/lib/usage";
 import { fmtCompact, fmtDateTime, fmtDuration, fmtNum, fmtPct, fmtUSD } from "@/lib/format";
-import { modelColor, modelLabel } from "@/lib/models";
+import { sourceLabel } from "@/lib/models";
 
 export default function SessionDetailPage() {
   const params = useParams();
@@ -58,10 +58,11 @@ export default function SessionDetailPage() {
           </p>
         </div>
         <div className="flex items-center gap-1.5">
+          <Badge tone="muted">{sourceLabel(session.source)}</Badge>
           {session.models.map((m) => (
-            <Badge key={m} tone="default">
-              <span className="h-2 w-2 rounded-full" style={{ background: modelColor(m) }} />
-              {modelLabel(m)}
+            <Badge key={m.key} tone="default">
+              <span className="h-2 w-2 rounded-full" style={{ background: m.color }} />
+              {m.label}
             </Badge>
           ))}
         </div>
@@ -109,9 +110,9 @@ export default function SessionDetailPage() {
           <PanelTitle title="Models" />
           <DonutChart
             data={models.map((m) => ({
-              name: modelLabel(m.model),
+              name: m.label,
               value: totalTokens(m.usage),
-              color: modelColor(m.model),
+              color: m.color,
             }))}
             centerLabel="tokens"
             centerValue={fmtCompact(summary.totalTokens)}

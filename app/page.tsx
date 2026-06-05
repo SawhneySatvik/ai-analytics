@@ -15,7 +15,6 @@ import {
 import type { SummaryResponse } from "@/lib/dto";
 import { dailyModelSeries, flattenDaily, fmtDayLabel } from "@/lib/chartData";
 import { fmtCompact, fmtDate, fmtNum, fmtPct, fmtUSD } from "@/lib/format";
-import { modelColor, modelLabel } from "@/lib/models";
 
 export default function OverviewPage() {
   const { data, error } = useDashboardData<SummaryResponse>("/api/summary");
@@ -37,10 +36,7 @@ export default function OverviewPage() {
 
   const { summary, daily, models, projects, tools, heatmap } = data;
   const rows = flattenDaily(daily);
-  const { data: modelData, series: modelSeries } = dailyModelSeries(
-    daily,
-    models.map((m) => m.model),
-  );
+  const { data: modelData, series: modelSeries } = dailyModelSeries(daily, models);
 
   const busiest = rows.reduce<(typeof rows)[number] | null>(
     (acc, r) => (acc == null || r.total > acc.total ? r : acc),
@@ -174,9 +170,9 @@ export default function OverviewPage() {
       <div className="flex flex-wrap items-center gap-3 pt-1">
         <Label>models in range</Label>
         {models.map((m) => (
-          <span key={m.model} className="flex items-center gap-1.5 text-xs text-fg-muted">
-            <span className="h-2 w-2 rounded-full" style={{ background: modelColor(m.model) }} />
-            {modelLabel(m.model)} · {fmtCompact(m.usage.input + m.usage.output + m.usage.cacheCreate + m.usage.cacheRead)}
+          <span key={m.key} className="flex items-center gap-1.5 text-xs text-fg-muted">
+            <span className="h-2 w-2 rounded-full" style={{ background: m.color }} />
+            {m.label} · {fmtCompact(m.usage.input + m.usage.output + m.usage.cacheCreate + m.usage.cacheRead)}
           </span>
         ))}
       </div>

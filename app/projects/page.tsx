@@ -12,7 +12,6 @@ import type { SessionsResponse, SummaryResponse } from "@/lib/dto";
 import type { ProjectRecord } from "@/lib/types";
 import { flattenDaily, fmtDayLabel } from "@/lib/chartData";
 import { fmtCompact, fmtDate, fmtNum, fmtUSD } from "@/lib/format";
-import { modelColor, modelLabel } from "@/lib/models";
 
 const tok = (u: ProjectRecord["usage"]) => u.input + u.output + u.cacheCreate + u.cacheRead;
 
@@ -62,9 +61,9 @@ export default function ProjectsPage() {
             <PanelTitle title="Models used" />
             <DonutChart
               data={models.map((m) => ({
-                name: modelLabel(m.model),
+                name: m.label,
                 value: tok(m.usage),
-                color: modelColor(m.model),
+                color: m.color,
               }))}
               centerLabel="tokens"
               centerValue={fmtCompact(summary.totalTokens)}

@@ -7,7 +7,7 @@ import { Badge } from "./ui";
 import type { SessionRecord } from "@/lib/types";
 import { totalTokens } from "@/lib/usage";
 import { fmtCompact, fmtDateTime, fmtDuration, fmtNum, fmtUSD } from "@/lib/format";
-import { modelColor, modelLabel } from "@/lib/models";
+import { sourceLabel } from "@/lib/models";
 
 export function SessionsTable({
   sessions,
@@ -48,16 +48,21 @@ export function SessionsTable({
       ),
     },
     {
+      key: "tool",
+      header: "Tool",
+      render: (s) => <Badge tone="muted">{sourceLabel(s.source)}</Badge>,
+    },
+    {
       key: "models",
       header: "Models",
       render: (s) => (
         <span className="flex items-center gap-1">
           {s.models.map((m) => (
             <span
-              key={m}
-              title={modelLabel(m)}
+              key={m.key}
+              title={m.label}
               className="h-2.5 w-2.5 rounded-full"
-              style={{ background: modelColor(m) }}
+              style={{ background: m.color }}
             />
           ))}
         </span>

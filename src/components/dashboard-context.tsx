@@ -15,6 +15,7 @@ export interface ClientFilters {
   from?: number;
   to?: number;
   project?: string;
+  source?: string;
   model?: string;
   branch?: string;
   scope: "all" | "main" | "subagent";
@@ -95,6 +96,7 @@ function buildQuery(filters: ClientFilters): string {
   if (filters.from != null) p.set("from", String(filters.from));
   if (filters.to != null) p.set("to", String(filters.to));
   if (filters.project) p.set("project", filters.project);
+  if (filters.source) p.set("source", filters.source);
   if (filters.model) p.set("model", filters.model);
   if (filters.branch) p.set("branch", filters.branch);
   if (filters.scope && filters.scope !== "all") p.set("scope", filters.scope);

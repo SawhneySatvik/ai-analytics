@@ -1,4 +1,4 @@
-import type { CanonicalModel } from "./types";
+import type { CanonicalModel, Provider, Source } from "./types";
 
 /**
  * Normalize a raw `message.model` string to a canonical key.
@@ -57,4 +57,62 @@ export function modelLabel(m: CanonicalModel): string {
 
 export function modelColor(m: CanonicalModel): string {
   return MODEL_COLORS[m] ?? MODEL_COLORS.unknown;
+}
+
+// ── source (CLI tool) identity ───────────────────────────────────────────────
+
+export const SOURCE_ORDER: Source[] = ["claude", "codex", "opencode"];
+
+export const SOURCE_LABELS: Record<Source, string> = {
+  claude: "Claude Code",
+  codex: "Codex CLI",
+  opencode: "OpenCode",
+};
+
+export const SOURCE_COLORS: Record<Source, string> = {
+  claude: "hsl(24 95% 58%)", // Anthropic-ish amber
+  codex: "hsl(158 64% 46%)", // OpenAI-ish green
+  opencode: "hsl(217 91% 60%)",
+};
+
+export function sourceLabel(s: Source): string {
+  return SOURCE_LABELS[s] ?? s;
+}
+
+export function sourceColor(s: Source): string {
+  return SOURCE_COLORS[s] ?? MODEL_COLORS.unknown;
+}
+
+// ── free-form (non-Claude) model identity ────────────────────────────────────
+
+/**
+ * Stable grouping key for a model. Claude uses its canonical key so existing
+ * breakdowns are unchanged; other providers key by `provider:rawModel` so two
+ * distinct models never collapse into one "unknown" row.
+ */
+export function modelKey(provider: Provider, model: CanonicalModel, rawModel: string): string {
+  return provider === "anthropic" ? model : `${provider}:${rawModel || "unknown"}`;
+}
+
+/** Deterministic, readable HSL color derived from an arbitrary label. */
+export function labelColor(label: string): string {
+  let h = 0;
+  for (let i = 0; i < label.length; i++) h = (h * 31 + label.charCodeAt(i)) >>> 0;
+  return `hsl(${h % 360} 65% 55%)`;
+}
+
+/** Chart color for a model record from any source. */
+export function modelColorFor(provider: Provider, model: CanonicalModel, key: string): string {
+  return provider === "anthropic" ? modelColor(model) : labelColor(key);
+}
+
+/** Prettify a raw model id for display, e.g. "gpt-5.5" → "GPT-5.5". */
+export function prettyModelLabel(rawModel: string): string {
+  if (!rawModel) return "Unknown";
+  return rawModel
+    .split("/")
+    .pop()!
+    .replace(/^gpt/i, "GPT")
+    .replace(/^o(\d)/i, "o$1")
+    .replace(/^claude-/i, "Claude ");
 }

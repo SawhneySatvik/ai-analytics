@@ -58,6 +58,7 @@ export function FilterBar() {
     filters.from != null ||
     filters.to != null ||
     filters.project ||
+    filters.source ||
     filters.model ||
     filters.branch ||
     filters.scope !== "all";
@@ -87,6 +88,20 @@ export function FilterBar() {
           );
         })}
       </div>
+
+      {/* source (only when more than one tool is present) */}
+      {opts && opts.sources.length > 1 && (
+        <div className="w-36">
+          <Select value={filters.source ?? ""} onChange={(v) => setFilters({ source: v || undefined })}>
+            <option value="">All tools</option>
+            {opts.sources.map((s) => (
+              <option key={s.source} value={s.source}>
+                {s.label}
+              </option>
+            ))}
+          </Select>
+        </div>
+      )}
 
       {/* project */}
       <div className="w-44">
