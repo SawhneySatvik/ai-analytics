@@ -59,7 +59,7 @@ function ThemeToggle() {
       type="button"
       onClick={toggle}
       aria-label="Toggle theme"
-      className="flex h-8 w-8 items-center justify-center rounded-lg border border-border bg-bg-elev text-fg-muted transition-colors hover:border-accent/50 hover:text-fg"
+      className="flex h-8 w-8 items-center justify-center rounded-lg border border-border bg-bg-elev text-fg-muted transition-all hover:border-accent/50 hover:text-fg active:scale-95"
     >
       {dark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
     </button>
@@ -79,7 +79,7 @@ function RefreshButton() {
         type="button"
         onClick={() => void refresh()}
         disabled={refreshing}
-        className="flex h-8 items-center gap-1.5 rounded-lg border border-border bg-bg-elev px-2.5 text-xs text-fg transition-colors hover:border-accent/50 disabled:opacity-60"
+        className="flex h-8 items-center gap-1.5 rounded-lg border border-border bg-bg-elev px-2.5 text-xs text-fg transition-all hover:border-accent/50 active:scale-95 disabled:opacity-60"
       >
         <RefreshCw className={cn("h-3.5 w-3.5", refreshing && "animate-spin")} />
         {refreshing ? "reading…" : "refresh"}
@@ -99,14 +99,26 @@ function NavRail() {
           <Link
             key={item.href}
             href={item.href}
+            aria-current={active ? "page" : undefined}
             className={cn(
-              "flex items-center gap-2.5 whitespace-nowrap rounded-lg px-3 py-2 text-sm transition-colors",
+              "group relative flex items-center gap-2.5 whitespace-nowrap rounded-lg px-3 py-2 text-sm transition-all duration-200",
               active
-                ? "bg-accent/12 font-medium text-accent"
-                : "text-fg-muted hover:bg-bg-elev hover:text-fg",
+                ? "bg-accent/[0.10] font-medium text-accent ring-1 ring-inset ring-accent/15"
+                : "text-fg-muted hover:bg-bg-elev/70 hover:text-fg",
             )}
           >
-            <Icon className="h-4 w-4 shrink-0" />
+            {active && (
+              <span
+                className="absolute left-0 top-1/2 hidden h-5 w-[3px] -translate-y-1/2 rounded-r-full bg-accent lg:block"
+                aria-hidden
+              />
+            )}
+            <Icon
+              className={cn(
+                "h-4 w-4 shrink-0 transition-colors",
+                active ? "text-accent" : "text-fg-muted group-hover:text-fg",
+              )}
+            />
             {item.label}
           </Link>
         );
@@ -130,13 +142,14 @@ function Warnings() {
 }
 
 export function Shell({ children }: { children: React.ReactNode }) {
+  const pathname = usePathname();
   return (
     <div className="min-h-screen">
       {/* sidebar (lg+) */}
       <aside className="fixed inset-y-0 left-0 z-30 hidden w-60 flex-col border-r border-border bg-bg-elev/40 px-3 py-5 lg:flex">
-        <div className="px-2 pb-5">
-          <div className="flex items-center gap-2">
-            <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-accent/15 text-accent">
+        <div className="px-2 pb-6">
+          <div className="flex items-center gap-2.5">
+            <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-gradient-to-br from-accent/30 to-accent/5 text-accent shadow-card ring-1 ring-inset ring-accent/25">
               <Activity className="h-4 w-4" />
             </div>
             <div>
@@ -154,28 +167,32 @@ export function Shell({ children }: { children: React.ReactNode }) {
       </aside>
 
       <div className="lg:pl-60">
-        {/* top bar */}
-        <header className="sticky top-0 z-20 border-b border-border bg-bg/80 backdrop-blur">
-          <div className="flex items-center justify-between gap-4 px-4 py-3 lg:px-6">
-            <div className="flex items-center gap-2 lg:hidden">
-              <Activity className="h-4 w-4 text-accent" />
-              <span className="text-sm font-semibold text-fg">CLI Usage</span>
+        {/* top bar + filter bar pin together */}
+        <div className="sticky top-0 z-20">
+          <header className="border-b border-border bg-bg/70 backdrop-blur-xl">
+            <div className="flex items-center justify-between gap-4 px-4 py-3 lg:px-6">
+              <div className="flex items-center gap-2 lg:hidden">
+                <Activity className="h-4 w-4 text-accent" />
+                <span className="text-sm font-semibold text-fg">CLI Usage</span>
+              </div>
+              <div className="ml-auto flex items-center gap-2">
+                <RefreshButton />
+                <ThemeToggle />
+              </div>
             </div>
-            <div className="ml-auto flex items-center gap-2">
-              <RefreshButton />
-              <ThemeToggle />
+            {/* mobile nav */}
+            <div className="overflow-x-auto border-t border-border px-2 py-1.5 lg:hidden">
+              <NavRail />
             </div>
-          </div>
-          {/* mobile nav */}
-          <div className="overflow-x-auto border-t border-border px-2 py-1.5 lg:hidden">
-            <NavRail />
-          </div>
-        </header>
+          </header>
+          <FilterBar />
+        </div>
 
-        <FilterBar />
         <Warnings />
 
-        <main className="container-wide py-6">{children}</main>
+        <main key={pathname} className="container-wide py-6 motion-safe:animate-fade-rise">
+          {children}
+        </main>
       </div>
     </div>
   );

@@ -4,7 +4,7 @@ import { X } from "lucide-react";
 
 import { useDashboard, useDashboardData } from "@/components/dashboard-context";
 import { PageHeader } from "@/components/PageHeader";
-import { Card, ErrorNote, Kpi, PanelTitle, Skeleton } from "@/components/ui";
+import { Card, ErrorNote, Kpi, PageSkeleton, PanelTitle, Skeleton } from "@/components/ui";
 import { BarList, DonutChart, StackedAreaChart, TOKEN_SERIES } from "@/components/charts";
 import { Table, type Column } from "@/components/Table";
 import { SessionsTable } from "@/components/SessionsTable";
@@ -21,7 +21,7 @@ export default function ProjectsPage() {
   const sessionsRes = useDashboardData<SessionsResponse>("/api/sessions");
 
   if (error && !data) return <ErrorNote message={`Couldn't load data — ${error}`} />;
-  if (!data) return <Skeleton className="h-96" />;
+  if (!data) return <PageSkeleton kpis={5} />;
 
   const { projects, summary, daily, models } = data;
   const active = filters.project;

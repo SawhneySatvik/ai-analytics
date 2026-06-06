@@ -46,9 +46,22 @@ export function Table<T>({
             <tr
               key={rowKey(row, i)}
               onClick={onRowClick ? () => onRowClick(row) : undefined}
+              onKeyDown={
+                onRowClick
+                  ? (e) => {
+                      if (e.key === "Enter" || e.key === " ") {
+                        e.preventDefault();
+                        onRowClick(row);
+                      }
+                    }
+                  : undefined
+              }
+              tabIndex={onRowClick ? 0 : undefined}
+              role={onRowClick ? "button" : undefined}
               className={cn(
                 "border-b border-border/50 transition-colors",
-                onRowClick && "cursor-pointer hover:bg-bg/50",
+                onRowClick &&
+                  "cursor-pointer hover:bg-accent/[0.05] focus-visible:bg-accent/[0.07] focus-visible:outline-none",
               )}
             >
               {columns.map((c) => (

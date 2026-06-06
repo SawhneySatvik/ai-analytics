@@ -26,6 +26,28 @@ const config: Config = {
       gridTemplateColumns: {
         24: "repeat(24, minmax(0, 1fr))",
       },
+      boxShadow: {
+        card: "var(--shadow-card)",
+        "card-hover": "var(--shadow-card-hover)",
+        pop: "var(--shadow-pop)",
+      },
+      keyframes: {
+        "fade-rise": {
+          "0%": { opacity: "0", transform: "translateY(10px)" },
+          "100%": { opacity: "1", transform: "translateY(0)" },
+        },
+        "pop-in": {
+          "0%": { opacity: "0", transform: "scale(0.97)" },
+          "100%": { opacity: "1", transform: "scale(1)" },
+        },
+        shimmer: {
+          "100%": { transform: "translateX(100%)" },
+        },
+      },
+      animation: {
+        "fade-rise": "fade-rise 0.55s cubic-bezier(0.22, 1, 0.36, 1) both",
+        "pop-in": "pop-in 0.16s ease-out both",
+      },
     },
   },
   plugins: [],

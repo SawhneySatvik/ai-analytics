@@ -2,7 +2,7 @@
 
 import { useDashboardData } from "@/components/dashboard-context";
 import { PageHeader } from "@/components/PageHeader";
-import { Card, ErrorNote, Kpi, PanelTitle, Skeleton, Stat } from "@/components/ui";
+import { Card, ErrorNote, Kpi, PageSkeleton, PanelTitle, Stat } from "@/components/ui";
 import { MultiLineChart, StackedAreaChart } from "@/components/charts";
 import type { SummaryResponse } from "@/lib/dto";
 import { flattenDaily, fmtDayLabel } from "@/lib/chartData";
@@ -11,7 +11,7 @@ import { fmtCompact, fmtPct, fmtUSD } from "@/lib/format";
 export default function CachePage() {
   const { data, error } = useDashboardData<SummaryResponse>("/api/summary");
   if (error && !data) return <ErrorNote message={`Couldn't load data — ${error}`} />;
-  if (!data) return <Skeleton className="h-96" />;
+  if (!data) return <PageSkeleton kpis={4} />;
 
   const { summary } = data;
   const rows = flattenDaily(data.daily);
@@ -66,7 +66,10 @@ export default function CachePage() {
           Cache reads dominate token <em>counts</em> but are billed at a fraction of input rate, so
           they barely move cost while saving large amounts versus re-sending context uncached. Dollar
           figures are estimates derived from token counts using the rates in{" "}
-          <code className="rounded bg-bg px-1 py-0.5 font-mono text-[11px]">src/lib/pricing.ts</code>.
+          <code className="rounded-md border border-border bg-bg-elev px-1.5 py-0.5 font-mono text-[11px] text-fg">
+            src/lib/pricing.ts
+          </code>
+          .
         </p>
       </Card>
     </div>

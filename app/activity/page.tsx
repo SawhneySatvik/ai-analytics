@@ -4,7 +4,7 @@ import { useState } from "react";
 
 import { useDashboardData } from "@/components/dashboard-context";
 import { PageHeader } from "@/components/PageHeader";
-import { Card, ErrorNote, Kpi, PanelTitle, Skeleton } from "@/components/ui";
+import { Card, ErrorNote, Kpi, PageSkeleton, PanelTitle } from "@/components/ui";
 import { BarList, Heatmap, MultiLineChart, SimpleBarChart } from "@/components/charts";
 import type { SummaryResponse } from "@/lib/dto";
 import { flattenDaily, fmtDayLabel } from "@/lib/chartData";
@@ -18,7 +18,7 @@ export default function ActivityPage() {
   const [metric, setMetric] = useState<"messages" | "tokens">("messages");
 
   if (error && !data) return <ErrorNote message={`Couldn't load data — ${error}`} />;
-  if (!data) return <Skeleton className="h-96" />;
+  if (!data) return <PageSkeleton kpis={4} />;
 
   const { heatmap, daily, commands, summary } = data;
   const rows = flattenDaily(daily);

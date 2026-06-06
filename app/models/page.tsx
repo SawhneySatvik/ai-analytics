@@ -2,7 +2,7 @@
 
 import { useDashboardData } from "@/components/dashboard-context";
 import { PageHeader } from "@/components/PageHeader";
-import { Card, ErrorNote, PanelTitle, Skeleton } from "@/components/ui";
+import { Card, ErrorNote, PageSkeleton, PanelTitle } from "@/components/ui";
 import { DonutChart, StackedAreaChart } from "@/components/charts";
 import { Table, type Column } from "@/components/Table";
 import type { SummaryResponse } from "@/lib/dto";
@@ -16,7 +16,7 @@ const tokTotal = (m: ModelRecord) =>
 export default function ModelsPage() {
   const { data, error } = useDashboardData<SummaryResponse>("/api/summary");
   if (error && !data) return <ErrorNote message={`Couldn't load data — ${error}`} />;
-  if (!data) return <Skeleton className="h-96" />;
+  if (!data) return <PageSkeleton kpis={4} />;
 
   const { models, daily, speeds, summary } = data;
   const { data: modelData, series: modelSeries } = dailyModelSeries(daily, models);
