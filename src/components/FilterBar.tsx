@@ -31,12 +31,25 @@ function Select({
       <select
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="h-8 w-full appearance-none rounded-lg border border-border bg-bg-elev pl-3 pr-8 text-xs text-fg outline-none transition-colors hover:border-accent/50 focus:border-accent"
+        className="h-8 w-full cursor-pointer appearance-none rounded-lg border border-border bg-bg-elev pl-3 pr-8 text-xs text-fg outline-none transition-colors hover:border-accent/50 focus:border-accent focus-visible:ring-2 focus-visible:ring-accent/35"
       >
         {children}
       </select>
       <ChevronDown className="pointer-events-none absolute right-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-fg-muted" />
     </div>
+  );
+}
+
+function Chip({ label, onClear }: { label: string; onClear: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onClear}
+      className="group inline-flex items-center gap-1 rounded-full border border-accent/30 bg-accent/10 py-0.5 pl-2 pr-1.5 font-mono text-[10px] uppercase tracking-[0.1em] text-accent transition-colors hover:bg-accent/20"
+    >
+      {label}
+      <X className="h-3 w-3 opacity-70 transition-opacity group-hover:opacity-100" />
+    </button>
   );
 }
 
@@ -46,6 +59,11 @@ export function FilterBar() {
 
   const activePreset = (() => {
     if (filters.from == null && filters.to == null) return "All";
+    if (filters.from != null && filters.to == null) {
+      const days = Math.round((Date.now() - filters.from) / DAY);
+      const match = PRESETS.find((p) => p.days === days);
+      if (match) return match.label;
+    }
     return null;
   })();
 
@@ -63,8 +81,33 @@ export function FilterBar() {
     filters.branch ||
     filters.scope !== "all";
 
+  // Active-filter chips — visible, individually clearable filter state.
+  const chips: { key: string; label: string; clear: () => void }[] = [];
+  if (filters.from != null || filters.to != null) {
+    const range = activePreset && activePreset !== "All" ? activePreset : "custom";
+    chips.push({ key: "date", label: `range · ${range}`, clear: () => setFilters({ from: undefined, to: undefined }) });
+  }
+  if (filters.source) {
+    const s = opts?.sources.find((x) => x.source === filters.source);
+    chips.push({ key: "source", label: `tool · ${s?.label ?? filters.source}`, clear: () => setFilters({ source: undefined }) });
+  }
+  if (filters.project) {
+    const p = opts?.projects.find((x) => x.path === filters.project);
+    chips.push({ key: "project", label: `project · ${p?.name ?? "—"}`, clear: () => setFilters({ project: undefined }) });
+  }
+  if (filters.model) {
+    chips.push({ key: "model", label: `model · ${modelLabel(filters.model as CanonicalModel)}`, clear: () => setFilters({ model: undefined }) });
+  }
+  if (filters.branch) {
+    chips.push({ key: "branch", label: `branch · ${filters.branch}`, clear: () => setFilters({ branch: undefined }) });
+  }
+  if (filters.scope !== "all") {
+    chips.push({ key: "scope", label: `scope · ${filters.scope}`, clear: () => setFilters({ scope: "all" }) });
+  }
+
   return (
-    <div className="flex flex-wrap items-center gap-2 border-b border-border bg-bg/60 px-4 py-2.5 backdrop-blur lg:px-6">
+    <div className="border-b border-border bg-bg/60 backdrop-blur lg:px-6">
+    <div className="flex flex-wrap items-center gap-2 px-4 py-2.5 lg:px-0">
       <span className="mr-1 hidden items-center gap-1.5 font-mono text-[10px] uppercase tracking-[0.14em] text-fg-muted sm:flex">
         <SlidersHorizontal className="h-3 w-3" /> filters
       </span>
@@ -162,10 +205,19 @@ export function FilterBar() {
         <button
           type="button"
           onClick={resetFilters}
-          className="ml-auto flex items-center gap-1 rounded-lg border border-border px-2 py-1 text-xs text-fg-muted transition-colors hover:border-accent/50 hover:text-fg"
+          className="ml-auto flex items-center gap-1 rounded-lg border border-border px-2 py-1 text-xs text-fg-muted transition-colors hover:border-accent/50 hover:text-fg active:scale-95"
         >
           <X className="h-3 w-3" /> clear
         </button>
+      )}
+    </div>
+
+      {chips.length > 0 && (
+        <div className="flex flex-wrap items-center gap-1.5 px-4 pb-2.5 lg:px-0">
+          {chips.map((c) => (
+            <Chip key={c.key} label={c.label} onClear={c.clear} />
+          ))}
+        </div>
       )}
     </div>
   );

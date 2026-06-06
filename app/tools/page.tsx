@@ -2,7 +2,7 @@
 
 import { useDashboardData } from "@/components/dashboard-context";
 import { PageHeader } from "@/components/PageHeader";
-import { Card, ErrorNote, Kpi, PanelTitle, Skeleton } from "@/components/ui";
+import { Card, ErrorNote, Kpi, PageSkeleton, PanelTitle } from "@/components/ui";
 import { BarList, SimpleBarChart } from "@/components/charts";
 import { Table, type Column } from "@/components/Table";
 import type { SummaryResponse } from "@/lib/dto";
@@ -13,7 +13,7 @@ import { fmtCompact, fmtNum, fmtUSD } from "@/lib/format";
 export default function ToolsPage() {
   const { data, error } = useDashboardData<SummaryResponse>("/api/summary");
   if (error && !data) return <ErrorNote message={`Couldn't load data — ${error}`} />;
-  if (!data) return <Skeleton className="h-96" />;
+  if (!data) return <PageSkeleton kpis={4} />;
 
   const { tools, subagents, daily, summary } = data;
   const rows = flattenDaily(daily);

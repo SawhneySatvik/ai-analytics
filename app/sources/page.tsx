@@ -2,7 +2,7 @@
 
 import { useDashboardData } from "@/components/dashboard-context";
 import { PageHeader } from "@/components/PageHeader";
-import { Card, ErrorNote, PanelTitle, Skeleton } from "@/components/ui";
+import { Card, ErrorNote, PageSkeleton, PanelTitle } from "@/components/ui";
 import { DonutChart, StackedAreaChart } from "@/components/charts";
 import { Table, type Column } from "@/components/Table";
 import type { SummaryResponse } from "@/lib/dto";
@@ -14,7 +14,7 @@ import { fmtCompact, fmtNum, fmtPct, fmtUSD } from "@/lib/format";
 export default function SourcesPage() {
   const { data, error } = useDashboardData<SummaryResponse>("/api/summary");
   if (error && !data) return <ErrorNote message={`Couldn't load data — ${error}`} />;
-  if (!data) return <Skeleton className="h-96" />;
+  if (!data) return <PageSkeleton kpis={3} />;
 
   const { sources, daily, summary } = data;
   const { data: srcData, series: srcSeries } = dailySourceSeries(daily, sources);

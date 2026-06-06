@@ -2,7 +2,7 @@
 
 import { useDashboardData } from "@/components/dashboard-context";
 import { PageHeader } from "@/components/PageHeader";
-import { Card, ErrorNote, PanelTitle, Skeleton, Stat } from "@/components/ui";
+import { Card, ErrorNote, PageSkeleton, PanelTitle, Stat } from "@/components/ui";
 import { SessionsTable } from "@/components/SessionsTable";
 import type { SessionsResponse } from "@/lib/dto";
 import { totalTokens } from "@/lib/usage";
@@ -11,7 +11,7 @@ import { fmtCompact, fmtNum, fmtUSD } from "@/lib/format";
 export default function SessionsPage() {
   const { data, error } = useDashboardData<SessionsResponse>("/api/sessions");
   if (error && !data) return <ErrorNote message={`Couldn't load data — ${error}`} />;
-  if (!data) return <Skeleton className="h-96" />;
+  if (!data) return <PageSkeleton kpis={4} />;
 
   const sessions = data.sessions;
   const totalMsgs = sessions.reduce((a, s) => a + s.messageCount, 0);

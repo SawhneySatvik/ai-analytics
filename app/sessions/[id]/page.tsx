@@ -5,7 +5,7 @@ import { useParams } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 
 import { useDashboardData } from "@/components/dashboard-context";
-import { Badge, Card, ErrorNote, Kpi, PanelTitle, Skeleton } from "@/components/ui";
+import { Badge, Card, ErrorNote, Kpi, PageSkeleton, PanelTitle } from "@/components/ui";
 import { BarList, DonutChart, MultiLineChart, StackedAreaChart, TOKEN_SERIES } from "@/components/charts";
 import type { SessionDetailResponse } from "@/lib/dto";
 import { cacheHitRate, totalTokens } from "@/lib/usage";
@@ -21,7 +21,7 @@ export default function SessionDetailPage() {
   });
 
   if (error && !data) return <ErrorNote message={`Couldn't load session — ${error}`} />;
-  if (!data) return <Skeleton className="h-96" />;
+  if (!data) return <PageSkeleton kpis={6} />;
 
   const { session, summary, timeline, tools, subagents, models } = data;
 
