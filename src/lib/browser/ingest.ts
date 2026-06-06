@@ -36,18 +36,20 @@ export async function ingestFromFiles(files: File[] | FileList, onProgress?: Pro
 
 /**
  * Show the directory picker and return the granted handle (Chromium only).
- * Opens at the home folder — since ~/.claude / ~/.codex are hidden, the easiest
- * path for most people is to select home and let walkDirectory find them inside.
+ * We deliberately omit `startIn`: its only valid values are the WellKnownDirectory
+ * enum (desktop/documents/downloads/music/pictures/videos) — there is no "home"
+ * entry, and passing one that isn't in the enum throws a TypeError. With a stable
+ * `id` the browser reopens wherever the user last picked, so they can navigate to
+ * home (and the hidden ~/.claude / ~/.codex inside it) themselves.
  */
 export async function pickDirectory(): Promise<FileSystemDirectoryHandle> {
   const picker = (window as unknown as {
     showDirectoryPicker: (opts?: {
       mode?: string;
-      startIn?: string;
       id?: string;
     }) => Promise<FileSystemDirectoryHandle>;
   }).showDirectoryPicker;
-  return picker({ mode: "read", startIn: "home", id: "agentmon-data" });
+  return picker({ mode: "read", id: "agentmon-data" });
 }
 
 /** Load the bundled synthetic demo snapshot (public/demo-snapshot.json). */
