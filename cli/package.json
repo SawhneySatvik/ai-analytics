@@ -1,0 +1,48 @@
+{
+  "name": "agentmon",
+  "version": "0.1.0",
+  "description": "A fast terminal dashboard for your local AI coding usage — Claude Code, Codex, and OpenCode.",
+  "type": "module",
+  "bin": {
+    "agentmon": "dist/index.js"
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch",
+    "start": "node dist/index.js",
+    "typecheck": "tsc --noEmit",
+    "prepublishOnly": "tsup"
+  },
+  "keywords": [
+    "cli",
+    "tui",
+    "ink",
+    "claude",
+    "claude-code",
+    "codex",
+    "opencode",
+    "analytics",
+    "tokens",
+    "ai",
+    "llm"
+  ],
+  "license": "MIT",
+  "dependencies": {
+    "ink": "^6.0.0",
+    "react": "^19.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "@types/react": "^19.0.0",
+    "ink-testing-library": "^4.0.0",
+    "tsup": "^8.3.5",
+    "typescript": "^5.7.3"
+  }
+}
