@@ -150,23 +150,49 @@ function timeBuckets(hourTotals: number[]): MiniRow[] {
   return bs.map(([label, v]) => ({ label, pct: v / max, valueText: fmtPct(v / total) }));
 }
 
+const ISSUE: Record<string, string> = {
+  wrapped: "01", persona: "02", receipt: "03", loadout: "04", rhythm: "05",
+  milestone: "06", tokens: "07", cache: "08", models: "09",
+};
+const line = (x1: number, y1: number, x2: number, y2: number, stroke: string, sw = 1) =>
+  `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="${stroke}" stroke-width="${sw}" />`;
+
 export function renderCardSVG(stats: ShareStats, opts: CardOpts): string {
   const { w, h } = DIMS[opts.ratio ?? "square"];
   const c = opts.colors;
   const pad = Math.round(w * 0.075);
-  const inner = w - pad * 2;
-  const left = pad;
+  const spine = Math.round(pad * 0.12);
+  const inner = w - pad * 2 - spine;
+  const left = pad + spine;
+  const no = ISSUE[opts.template] ?? "00";
   const els: string[] = [];
 
   // frame
   els.push(rect(0, 0, w, h, c.bg));
+  // faint engineering grid
+  const g = Math.round(pad * 0.78);
+  let gx = "";
+  for (let x = g; x < w; x += g) gx += line(x, 0, x, h, withAlpha(c.fg, 0.035));
+  for (let y = g; y < h; y += g) gx += line(0, y, w, y, withAlpha(c.fg, 0.035));
+  els.push(gx);
   els.push(
-    `<rect x="1" y="1" width="${w - 2}" height="${h - 2}" rx="0" fill="none" stroke="${withAlpha(c.border, 1)}" stroke-width="2" />`,
-  );
-  els.push(
-    `<defs><radialGradient id="atm" cx="80%" cy="0%" r="75%"><stop offset="0%" stop-color="${withAlpha(c.accent, 0.18)}" /><stop offset="60%" stop-color="${withAlpha(c.accent, 0)}" /></radialGradient></defs>`,
+    `<defs><radialGradient id="atm" cx="84%" cy="0%" r="78%"><stop offset="0%" stop-color="${withAlpha(c.accent, 0.2)}" /><stop offset="60%" stop-color="${withAlpha(c.accent, 0)}" /></radialGradient></defs>`,
   );
   els.push(rect(0, 0, w, h, "url(#atm)"));
+  // ghosted issue numeral (behind content)
+  els.push(text(w - Math.round(pad * 0.2), Math.round(h * 0.98), no, { size: Math.round(h * 0.5), fill: withAlpha(c.fg, 0.04), weight: 700, anchor: "end", spacing: -4 }));
+  // accent spine
+  els.push(rect(0, 0, spine, h, c.accent));
+  // crop / registration marks
+  const mi = Math.round(pad * 0.5);
+  const ln = Math.round(pad * 0.32);
+  const cmS = withAlpha(c.fg, 0.22);
+  els.push(line(left + mi - ln, pad + mi, left + mi, pad + mi, cmS) + line(left + mi, pad + mi - ln, left + mi, pad + mi, cmS));
+  els.push(line(w - pad - mi, pad + mi, w - pad - mi + ln, pad + mi, cmS) + line(w - pad - mi, pad + mi - ln, w - pad - mi, pad + mi, cmS));
+  els.push(line(left + mi - ln, h - pad - mi, left + mi, h - pad - mi, cmS) + line(left + mi, h - pad - mi, left + mi, h - pad - mi + ln, cmS));
+  els.push(line(w - pad - mi, h - pad - mi, w - pad - mi + ln, h - pad - mi, cmS) + line(w - pad - mi, h - pad - mi, w - pad - mi, h - pad - mi + ln, cmS));
+  // border
+  els.push(`<rect x="1" y="1" width="${w - 2}" height="${h - 2}" rx="0" fill="none" stroke="${withAlpha(c.border, 1)}" stroke-width="2" />`);
 
   const eyebrow = (label: string, y: number) =>
     text(left, y, `${label} · ${stats.rangeLabel}`, { size: 22, fill: c.accent, weight: 600, mono: true, upper: true, spacing: 3 });
@@ -325,11 +351,11 @@ export function renderCardSVG(stats: ShareStats, opts: CardOpts): string {
     els.push(sparkPath(stats.spark, left, sy + 24, inner, 110, c.accent));
   }
 
-  // footer brand
+  // colophon footer
   const fy = h - pad + 36;
-  els.push(text(left, fy, "CLI Usage Analytics", { size: 24, fill: c.fg, weight: 600 }));
-  els.push(text(left, fy + 28, "local · on-device", { size: 18, fill: c.fgMuted, mono: true, upper: true, spacing: 2 }));
-  if (opts.handle) els.push(text(w - pad, fy, opts.handle, { size: 24, fill: c.fgMuted, mono: true, anchor: "end" }));
+  els.push(line(left, fy - 28, w - pad, fy - 28, withAlpha(c.border, 1)));
+  els.push(text(left, fy, `CLI USAGE ANALYTICS · LOCAL · ON-DEVICE`, { size: 18, fill: c.fgMuted, mono: true, upper: true, spacing: 2 }));
+  els.push(text(w - pad, fy, `${opts.handle ? opts.handle + " · " : ""}Nº ${no}`, { size: 18, fill: c.fgMuted, mono: true, upper: true, anchor: "end", spacing: 2 }));
 
   return `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}">${els.join("")}</svg>`;
 }

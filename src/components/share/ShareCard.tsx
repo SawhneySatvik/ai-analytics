@@ -11,6 +11,19 @@ import { ConicDonut, HeatGrid, MiniBars, ShareBar, Spark, type MiniBarItem } fro
 const hourLabel = (h: number | null) => (h == null ? "—" : `${String(h).padStart(2, "0")}:00`);
 const shortDay = (d: string | null) => (d ? d.slice(0, 3) : "—");
 
+// Editorial "issue number" per template — printed big & ghosted for poster depth.
+const TEMPLATE_META: Record<ShareTemplate, { no: string; kicker: string }> = {
+  wrapped: { no: "01", kicker: "The Wrapped" },
+  persona: { no: "02", kicker: "The Persona" },
+  receipt: { no: "03", kicker: "The Receipt" },
+  loadout: { no: "04", kicker: "The Loadout" },
+  rhythm: { no: "05", kicker: "The Rhythm" },
+  milestone: { no: "06", kicker: "The Milestone" },
+  tokens: { no: "07", kicker: "Token Maxer" },
+  cache: { no: "08", kicker: "Cache Pro" },
+  models: { no: "09", kicker: "Model Mix" },
+};
+
 function timeBuckets(hourTotals: number[]): MiniBarItem[] {
   const sum = (a: number, b: number) => hourTotals.slice(a, b).reduce((x, y) => x + y, 0);
   const buckets = [
@@ -477,7 +490,11 @@ export const ShareCard = forwardRef<HTMLDivElement, ShareCardProps>(function Sha
 ) {
   const { w, h } = RATIOS[ratio];
   const s = SIZES[ratio];
-  const inner = w - s.pad * 2;
+  const spine = Math.round(s.pad * 0.12);
+  const inner = w - s.pad * 2 - spine;
+  const grid = Math.round(s.pad * 0.78);
+  const cm = Math.round(s.foot * 1.1); // crop-mark size
+  const meta = TEMPLATE_META[template];
 
   return (
     <div
@@ -486,49 +503,82 @@ export const ShareCard = forwardRef<HTMLDivElement, ShareCardProps>(function Sha
       style={{ width: w, height: h }}
       className="relative isolate overflow-hidden bg-bg font-sans text-fg"
     >
+      {/* faint engineering grid for depth/texture */}
       <div
         aria-hidden
         className="pointer-events-none absolute inset-0"
-        style={{ background: `radial-gradient(${w * 0.9}px ${h * 0.8}px at 82% -12%, hsl(var(--accent) / 0.20), transparent 58%)` }}
+        style={{
+          backgroundImage:
+            "linear-gradient(hsl(var(--fg) / 0.035) 1px, transparent 1px), linear-gradient(90deg, hsl(var(--fg) / 0.035) 1px, transparent 1px)",
+          backgroundSize: `${grid}px ${grid}px`,
+          opacity: 0.7,
+        }}
+      />
+      {/* accent atmosphere */}
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-0"
+        style={{ background: `radial-gradient(${w * 0.9}px ${h * 0.8}px at 86% -14%, hsl(var(--accent) / 0.22), transparent 56%)` }}
       />
       <div
         aria-hidden
         className="pointer-events-none absolute inset-0"
-        style={{ background: `radial-gradient(${w}px ${h}px at 8% 118%, hsl(var(--accent) / 0.07), transparent 52%)` }}
+        style={{ background: `radial-gradient(${w}px ${h}px at 6% 120%, hsl(var(--accent) / 0.08), transparent 52%)` }}
       />
+      {/* ghosted issue numeral */}
+      <div
+        aria-hidden
+        className="pointer-events-none absolute font-semibold leading-none tabular"
+        style={{ bottom: -h * 0.16, right: w * 0.02, fontSize: h * 0.62, color: "hsl(var(--fg) / 0.035)", letterSpacing: "-0.05em" }}
+      >
+        {meta.no}
+      </div>
+      {/* accent spine */}
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-y-0 left-0"
+        style={{ width: spine, background: "linear-gradient(180deg, hsl(var(--accent)), hsl(var(--accent-soft)))" }}
+      />
+      {/* crop / registration marks */}
+      {(() => {
+        const mark = "1.5px solid hsl(var(--fg) / 0.22)";
+        const base = { width: cm, height: cm } as const;
+        return (
+          <>
+            <div aria-hidden className="pointer-events-none absolute" style={{ ...base, top: cm, left: spine + cm, borderTop: mark, borderLeft: mark }} />
+            <div aria-hidden className="pointer-events-none absolute" style={{ ...base, top: cm, right: cm, borderTop: mark, borderRight: mark }} />
+            <div aria-hidden className="pointer-events-none absolute" style={{ ...base, bottom: cm, left: spine + cm, borderBottom: mark, borderLeft: mark }} />
+            <div aria-hidden className="pointer-events-none absolute" style={{ ...base, bottom: cm, right: cm, borderBottom: mark, borderRight: mark }} />
+          </>
+        );
+      })()}
       <div aria-hidden className="pointer-events-none absolute inset-0" style={{ boxShadow: "inset 0 0 0 1px hsl(var(--border))" }} />
 
-      <div className="relative flex h-full flex-col" style={{ padding: s.pad }}>
+      <div className="relative flex h-full flex-col" style={{ paddingTop: s.pad, paddingBottom: s.pad, paddingRight: s.pad, paddingLeft: s.pad + spine }}>
         <div className="flex-1 overflow-hidden">{body(stats, template, ratio, s, inner)}</div>
 
-        <div className="flex items-center justify-between" style={{ marginTop: s.gap }}>
-          <div className="flex items-center" style={{ gap: s.foot * 0.8 }}>
+        {/* colophon footer */}
+        <div style={{ marginTop: s.gap, borderTop: "1px solid hsl(var(--border))", paddingTop: s.gap * 0.7 }} className="flex items-center justify-between">
+          <div className="flex items-center" style={{ gap: s.foot * 0.7 }}>
             <div
               className="flex items-center justify-center"
               style={{
-                width: s.foot * 2.3,
-                height: s.foot * 2.3,
-                borderRadius: s.foot * 0.7,
-                background: "linear-gradient(135deg, hsl(var(--accent) / 0.4), hsl(var(--accent) / 0.06))",
-                boxShadow: "inset 0 0 0 1px hsl(var(--accent) / 0.3)",
+                width: s.foot * 2,
+                height: s.foot * 2,
+                borderRadius: s.foot * 0.55,
+                background: "linear-gradient(135deg, hsl(var(--accent) / 0.45), hsl(var(--accent) / 0.05))",
+                boxShadow: "inset 0 0 0 1px hsl(var(--accent) / 0.35)",
               }}
             >
-              <Activity style={{ width: s.foot * 1.25, height: s.foot * 1.25 }} className="text-accent" />
+              <Activity style={{ width: s.foot * 1.1, height: s.foot * 1.1 }} className="text-accent" />
             </div>
-            <div>
-              <div style={{ fontSize: s.foot }} className="font-semibold text-fg">
-                CLI Usage Analytics
-              </div>
-              <div style={{ fontSize: s.foot * 0.78, letterSpacing: "0.16em" }} className="font-mono uppercase text-fg-muted">
-                local · on-device
-              </div>
+            <div style={{ fontSize: s.foot * 0.82, letterSpacing: "0.14em" }} className="font-mono uppercase text-fg-muted">
+              CLI Usage Analytics <span className="text-fg-muted/50">·</span> local · on-device
             </div>
           </div>
-          {handle ? (
-            <div style={{ fontSize: s.foot }} className="font-mono font-medium text-fg-muted">
-              {handle}
-            </div>
-          ) : null}
+          <div style={{ fontSize: s.foot * 0.82, letterSpacing: "0.14em" }} className="font-mono uppercase text-fg-muted">
+            {handle ? `${handle} · ` : ""}Nº {meta.no}
+          </div>
         </div>
       </div>
     </div>

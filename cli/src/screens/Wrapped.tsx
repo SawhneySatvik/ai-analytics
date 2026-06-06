@@ -5,9 +5,11 @@ import type { ScreenProps } from "../data.js";
 import { deriveShareStats, type ShareTemplate } from "@core/share";
 import { derivePersona, computeBadges, nextMilestone } from "@core/badges";
 import { fmtCompact, fmtNum, fmtPct, fmtUSD } from "@core/format";
+import { dailyModelSeries } from "@core/chartData";
 import { palette } from "../theme.js";
 import { Kpi, SectionTitle } from "../components/ui.js";
-import { BarRow, Sparkline, Heatmap } from "../components/viz.js";
+import { BarRow, Heatmap } from "../components/viz.js";
+import { Chart } from "../components/chart.js";
 import { useMouse } from "../mouse.js";
 import { exportCard, openPath, type ExportResult } from "../cardImage.js";
 
@@ -109,7 +111,7 @@ export function Wrapped({ d, width, height, contentTop, compact }: ScreenProps) 
 
         {/* the selected card */}
         <Box borderStyle="round" borderColor={palette.dim} paddingX={1} width={cardW} flexDirection="column">
-          <CardBody template={template} stats={stats} width={cardW - 4} />
+          <CardBody template={template} stats={stats} d={d} width={cardW - 4} />
         </Box>
       </Box>
 
@@ -178,10 +180,12 @@ export function Wrapped({ d, width, height, contentTop, compact }: ScreenProps) 
 function CardBody({
   template,
   stats,
+  d,
   width,
 }: {
   template: ShareTemplate;
   stats: ReturnType<typeof deriveShareStats>;
+  d: ScreenProps["d"];
   width: number;
 }) {
   if (template === "persona") {
@@ -295,8 +299,9 @@ function CardBody({
       </Box>
     );
   }
-  // wrapped (default)
+  // wrapped (default) — KPIs + a braille tokens-by-model area chart
   const s = stats;
+  const { data: chartData, series: chartSeries } = dailyModelSeries(d.daily, d.models);
   return (
     <Box flexDirection="column">
       <Text color={palette.muted}>AI WRAPPED · {s.rangeLabel}</Text>
@@ -306,20 +311,13 @@ function CardBody({
         <Kpi label="Msgs" value={fmtNum(s.messages)} width={10} />
         <Kpi label="Cache" value={fmtPct(s.cacheHitRate)} width={9} />
       </Box>
-      {s.tools.length ? (
-        <Box marginTop={1} flexDirection="column">
-          <Text color={palette.dim}>TOP TOOLS</Text>
-          {s.tools.slice(0, 3).map((t) => (
-            <BarRow key={t.name} label={t.name} value={t.count} max={s.tools[0].count || 1} barWidth={Math.max(8, width - 28)} labelWidth={12} valueText={fmtNum(t.count)} />
-          ))}
-        </Box>
-      ) : null}
       <Box marginTop={1} flexDirection="column">
-        <Text color={palette.dim}>
-          activity · subagents {fmtPct(s.subagentPct)} · wk {fmtPct(s.weekdayPct)}/{fmtPct(s.weekendPct)}
-        </Text>
-        <Sparkline data={s.spark} width={Math.max(10, width - 2)} />
+        <Text color={palette.dim}>TOKENS / DAY · BY MODEL</Text>
+        <Chart data={chartData} series={chartSeries} style="area" width={Math.max(24, width - 2)} height={8} valueFmt={fmtCompact} />
       </Box>
+      <Text color={palette.dim}>
+        peak {shortDay(s.peakDay)} {hourLabel(s.peakHour)} · subagents {fmtPct(s.subagentPct)} · wk {fmtPct(s.weekdayPct)}/{fmtPct(s.weekendPct)}
+      </Text>
     </Box>
   );
 }
