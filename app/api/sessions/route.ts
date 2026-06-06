@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { getSnapshot } from "@/lib/cache";
+import { filterKey, memoizeQuery } from "@/lib/queryCache";
 import { parseFilters } from "@/lib/request";
 import {
   applyFilters,
@@ -23,25 +24,32 @@ export async function GET(req: Request) {
 
     // ── single-session detail ────────────────────────────────────────────────
     if (id) {
-      const msgs = snap.messages.filter((m) => m.sessionId === id);
-      if (msgs.length === 0) {
+      const detail = memoizeQuery(snap, "session:" + id, () => {
+        const msgs = snap.messages.filter((m) => m.sessionId === id);
+        if (msgs.length === 0) return null;
+        const [session] = sessionList(msgs, snap.sessionMeta);
+        return {
+          session,
+          summary: summarize(msgs),
+          timeline: sessionTimeline(msgs),
+          tools: toolBreakdown(msgs),
+          subagents: subagentBreakdown(msgs),
+          models: modelBreakdown(msgs),
+        };
+      });
+      if (!detail) {
         return NextResponse.json({ error: "session not found" }, { status: 404 });
       }
-      const [session] = sessionList(msgs, snap.sessionMeta);
-      return NextResponse.json({
-        session,
-        summary: summarize(msgs),
-        timeline: sessionTimeline(msgs),
-        tools: toolBreakdown(msgs),
-        subagents: subagentBreakdown(msgs),
-        models: modelBreakdown(msgs),
-      });
+      return NextResponse.json(detail);
     }
 
     // ── filtered session list ──────────────────────────────────────────────────
-    const filters = parseFilters(url.searchParams);
-    const messages = applyFilters(snap.messages, filters);
-    return NextResponse.json({ sessions: sessionList(messages, snap.sessionMeta) });
+    const body = memoizeQuery(snap, "sessions:" + filterKey(url.searchParams), () => {
+      const filters = parseFilters(url.searchParams);
+      const messages = applyFilters(snap.messages, filters);
+      return { sessions: sessionList(messages, snap.sessionMeta) };
+    });
+    return NextResponse.json(body);
   } catch (err) {
     return NextResponse.json(
       { error: err instanceof Error ? err.message : "ingestion failed" },
