@@ -17,7 +17,9 @@ export default defineConfig({
   sourcemap: false,
   dts: false,
   banner: { js: "#!/usr/bin/env node" },
-  external: ["react", "react/*", "ink", "ink/*"],
+  // resvg is an optional native dep, loaded lazily at runtime for image export —
+  // keep it external so it resolves from node_modules (and stays optional).
+  external: ["react", "react/*", "ink", "ink/*", "@resvg/resvg-js"],
   esbuildOptions(options) {
     options.alias = { "@core": path.resolve(__dirname, "../src/lib") };
     options.jsx = "automatic";

@@ -15,6 +15,7 @@ import {
   type ShareRatio,
   type ShareTemplate,
 } from "@/lib/share";
+import { derivePersona } from "@/lib/badges";
 import { THEMES } from "@/lib/themes";
 import { fmtCompact } from "@/lib/format";
 import { cn } from "@/lib/utils";
@@ -85,7 +86,8 @@ export default function SharePage() {
   }
 
   function postToX() {
-    const text = `My AI coding usage: ${fmtCompact(stats.totalTokens)} tokens across ${stats.days} active days. Mapped with CLI Usage Analytics →`;
+    const persona = derivePersona(stats);
+    const text = `apparently I'm a ${persona.title} ${persona.emoji} — ${fmtCompact(stats.totalTokens)} tokens across ${stats.days} active days, all on-device with CLI Usage Analytics →`;
     window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}`, "_blank", "noopener");
   }
 

@@ -48,6 +48,9 @@
     "ink": "^6.0.0",
     "react": "^19.0.0"
   },
+  "optionalDependencies": {
+    "@resvg/resvg-js": "^2.6.2"
+  },
   "devDependencies": {
     "@types/node": "^22.10.0",
     "@types/react": "^19.0.0",

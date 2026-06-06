@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   Activity,
+  Award,
   Boxes,
   Database,
   FolderGit2,
@@ -33,6 +34,7 @@ const NAV = [
   { href: "/tools", label: "Tool Calls", icon: Wrench },
   { href: "/activity", label: "Activity", icon: Activity },
   { href: "/cache", label: "Cache", icon: Database },
+  { href: "/badges", label: "Badges", icon: Award },
   { href: "/share", label: "Share", icon: Share2 },
 ];
 

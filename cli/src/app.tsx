@@ -18,6 +18,7 @@ import { Activity } from "./screens/Activity.js";
 import { Sources } from "./screens/Sources.js";
 import { Tools } from "./screens/Tools.js";
 import { Cache } from "./screens/Cache.js";
+import { Wrapped } from "./screens/Wrapped.js";
 
 export interface InitialOptions {
   rangeIdx: number;
@@ -34,6 +35,7 @@ const SCREEN_COMPS: ((p: ScreenProps) => React.ReactNode)[] = [
   Sources,
   Tools,
   Cache,
+  Wrapped,
 ];
 
 export function App({ initial }: { initial: InitialOptions }) {
@@ -153,7 +155,7 @@ export function App({ initial }: { initial: InitialOptions }) {
       : `${FOOTER_STAR} · ingested ${relativeTime(snap.builtAt)}`;
   const hints = compact
     ? "↑↓ ⏎ · d s c · r · ? · q"
-    : "1–8 tabs · ↑↓ ⏎ · d days · s src · c scope · r refresh · ? help · q quit";
+    : "1–9 tabs · ↑↓ ⏎ · d days · s src · c scope · r refresh · ? help · q quit";
 
   return (
     <Box flexDirection="column" width={cols} height={rows} paddingTop={1}>

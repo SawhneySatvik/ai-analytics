@@ -4,8 +4,12 @@ import { forwardRef } from "react";
 import { Activity } from "lucide-react";
 
 import { RATIOS, type ShareRatio, type ShareStats, type ShareTemplate } from "@/lib/share";
+import { derivePersona, nextMilestone } from "@/lib/badges";
 import { fmtCompact, fmtNum, fmtPct, fmtUSD } from "@/lib/format";
-import { ConicDonut, ShareBar, Spark } from "./viz";
+import { ConicDonut, HeatGrid, ShareBar, Spark } from "./viz";
+
+const hourLabel = (h: number | null) => (h == null ? "—" : `${String(h).padStart(2, "0")}:00`);
+const shortDay = (d: string | null) => (d ? d.slice(0, 3) : "—");
 
 export interface ShareCardProps {
   stats: ShareStats;
@@ -70,6 +74,17 @@ function Hero({ value, unit, s }: { value: string; unit: string; s: Sizing }) {
         {unit}
       </span>
     </div>
+  );
+}
+
+function Chip({ children, s }: { children: React.ReactNode; s: Sizing }) {
+  return (
+    <span
+      style={{ fontSize: s.tileLabel + 2, padding: `${s.gap * 0.3}px ${s.gap * 0.6}px`, borderRadius: 999, gap: s.gap * 0.4 }}
+      className="inline-flex items-center border border-border bg-[hsl(var(--fg)/0.04)] font-medium"
+    >
+      {children}
+    </span>
   );
 }
 
@@ -175,11 +190,182 @@ function body(stats: ShareStats, template: ShareTemplate, ratio: ShareRatio, s: 
     );
   }
 
-  // wrapped (default)
+  if (template === "persona") {
+    const p = derivePersona(stats);
+    const chips: [string, string][] = [
+      ["peak", `${shortDay(stats.peakDay)} ${hourLabel(stats.peakHour)}`],
+      ["top model", stats.topModel ? `${stats.topModel.label} ${fmtPct(stats.topModel.pct)}` : "—"],
+      ["cache", fmtPct(stats.cacheHitRate)],
+      ["weekend", fmtPct(stats.weekendPct)],
+    ];
+    return (
+      <div className="flex h-full flex-col justify-between">
+        <Eyebrow s={s}>My coding persona · {stats.rangeLabel}</Eyebrow>
+        <div className="flex flex-col items-start" style={{ gap: s.gap * 0.6 }}>
+          <div style={{ fontSize: s.hero, lineHeight: 1 }}>{p.emoji}</div>
+          <div
+            style={{ fontSize: s.hero * 0.46, lineHeight: 1.02, letterSpacing: "-0.02em" }}
+            className="font-semibold tracking-tight text-fg"
+          >
+            {p.title}
+          </div>
+          <div style={{ fontSize: s.unit * 0.9, maxWidth: "88%" }} className="text-fg-muted">
+            {p.blurb}
+          </div>
+        </div>
+        <div className="flex flex-wrap" style={{ gap: s.gap * 0.5 }}>
+          {chips.map(([k, v]) => (
+            <Chip key={k} s={s}>
+              <span className="font-mono uppercase text-fg-muted" style={{ fontSize: s.tileLabel }}>{k}</span>
+              <span className="text-fg">{v}</span>
+            </Chip>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  if (template === "receipt") {
+    return (
+      <div className="flex h-full flex-col font-mono">
+        <div className="text-center">
+          <div style={{ fontSize: s.unit }} className="font-semibold uppercase tracking-[0.2em] text-fg">
+            AI Usage Receipt
+          </div>
+          <div style={{ fontSize: s.tileLabel }} className="uppercase tracking-[0.14em] text-fg-muted">
+            {stats.rangeLabel}
+          </div>
+        </div>
+        <div style={{ marginTop: s.gap, borderTop: "2px dashed hsl(var(--border))" }} />
+        <div className="flex-1" style={{ display: "flex", flexDirection: "column", gap: s.gap * 0.55, paddingBlock: s.gap }}>
+          {stats.models.slice(0, 6).map((m) => (
+            <div key={m.label} className="flex items-baseline" style={{ fontSize: s.tile * 0.6 }}>
+              <span className="text-fg">{m.label}</span>
+              <span style={{ flex: 1, margin: "0 10px", borderBottom: "1px dotted hsl(var(--fg) / 0.25)", transform: "translateY(-4px)" }} />
+              <span className="text-fg tabular">{fmtUSD(m.cost)}</span>
+            </div>
+          ))}
+        </div>
+        <div style={{ borderTop: "2px dashed hsl(var(--border))" }} />
+        <div className="flex items-baseline justify-between" style={{ marginTop: s.gap * 0.6 }}>
+          <span style={{ fontSize: s.unit }} className="font-semibold uppercase tracking-[0.16em] text-fg">Total</span>
+          <span style={{ fontSize: s.hero * 0.58 }} className="font-semibold text-accent tabular">{fmtUSD(stats.cost)}</span>
+        </div>
+        <div style={{ fontSize: s.tileLabel + 1, marginTop: s.gap * 0.5 }} className="text-center text-fg-muted">
+          {fmtCompact(stats.totalTokens)} tokens · thanks for your business 💸
+        </div>
+      </div>
+    );
+  }
+
+  if (template === "loadout") {
+    return (
+      <div className="flex h-full flex-col justify-between">
+        <div>
+          <Eyebrow s={s}>My loadout · {stats.rangeLabel}</Eyebrow>
+          <div style={{ marginTop: s.gap * 0.5, fontSize: s.unit * 0.9 }} className="text-fg-muted">
+            <span className="font-semibold text-fg">{stats.models.length}</span> models ·{" "}
+            <span className="font-semibold text-fg">{fmtCompact(stats.totalTokens)}</span> tokens
+          </div>
+        </div>
+        <div style={{ display: "flex", flexDirection: "column", gap: s.gap * 0.7 }}>
+          {stats.models.slice(0, 5).map((m) => (
+            <div key={m.label} style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+              <div className="flex items-center justify-between" style={{ fontSize: s.tile * 0.58 }}>
+                <span className="flex items-center gap-2 font-medium text-fg">
+                  <span style={{ width: 12, height: 12, borderRadius: 4, background: m.color }} />
+                  {m.label}
+                </span>
+                <span className="font-semibold text-fg-muted tabular">{fmtPct(m.pct)}</span>
+              </div>
+              <ShareBar pct={m.pct} color={m.color} height={Math.max(6, s.spark * 0.12)} />
+            </div>
+          ))}
+        </div>
+        <div className="flex flex-wrap" style={{ gap: s.gap * 0.45 }}>
+          {stats.sources.map((src) => (
+            <Chip key={src.label} s={s}>
+              <span style={{ width: 8, height: 8, borderRadius: 999, background: src.color }} />
+              <span className="text-fg">{src.label}</span>
+              <span className="text-fg-muted">{fmtPct(src.pct)}</span>
+            </Chip>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  if (template === "rhythm") {
+    return (
+      <div className="flex h-full flex-col justify-between">
+        <div>
+          <Eyebrow s={s}>When I code · {stats.rangeLabel}</Eyebrow>
+          <div style={{ marginTop: s.gap * 0.4, fontSize: s.unit }} className="text-fg-muted">
+            peak <span className="font-semibold text-fg">{shortDay(stats.peakDay)} {hourLabel(stats.peakHour)}</span>
+          </div>
+        </div>
+        <div className="flex flex-1 items-center" style={{ paddingBlock: s.gap }}>
+          <HeatGrid cells={stats.heatmap.cells} width={inner} />
+        </div>
+        <div className="grid grid-cols-4" style={{ gap: s.pad * 0.4 }}>
+          <Tile label="Weekdays" value={fmtPct(stats.weekdayPct)} s={s} />
+          <Tile label="Weekends" value={fmtPct(stats.weekendPct)} s={s} />
+          <Tile label="Active days" value={fmtNum(stats.days)} s={s} />
+          <Tile label="Tokens" value={fmtCompact(stats.totalTokens)} s={s} />
+        </div>
+      </div>
+    );
+  }
+
+  if (template === "milestone") {
+    const m = nextMilestone(stats.totalTokens);
+    const celebrating = !!m.achieved;
+    return (
+      <div className="flex h-full flex-col justify-between">
+        <Eyebrow s={s}>{celebrating ? "Milestone unlocked" : "Next milestone"} · {stats.rangeLabel}</Eyebrow>
+        <div className="flex flex-col" style={{ gap: s.gap * 0.6 }}>
+          <div style={{ fontSize: s.hero * 0.7, lineHeight: 1 }}>{celebrating ? "🎉" : "🚀"}</div>
+          <div style={{ fontSize: s.hero * 0.62, lineHeight: 1, letterSpacing: "-0.03em" }} className="font-semibold text-fg tabular">
+            {celebrating ? `${m.achieved!.label} tokens` : `${fmtCompact(stats.totalTokens)} tokens`}
+          </div>
+          <div style={{ fontSize: s.unit * 0.9 }} className="text-fg-muted">
+            {celebrating ? (
+              <>crossed <span className="font-semibold text-accent">{m.achieved!.label}</span> total tokens</>
+            ) : (
+              "on the way up"
+            )}
+          </div>
+        </div>
+        {m.next ? (
+          <div style={{ display: "flex", flexDirection: "column", gap: s.gap * 0.5 }}>
+            <div className="flex items-center justify-between" style={{ fontSize: s.tileLabel + 1 }}>
+              <span className="font-mono uppercase tracking-[0.14em] text-fg-muted">{fmtCompact(stats.totalTokens)}</span>
+              <span className="font-mono uppercase tracking-[0.14em] text-fg-muted">next {m.next.label}</span>
+            </div>
+            <ShareBar pct={m.pctToNext} color="hsl(var(--accent))" height={Math.max(8, s.spark * 0.16)} />
+            <div style={{ fontSize: s.tileLabel }} className="font-mono uppercase tracking-[0.14em] text-fg-muted">
+              {fmtPct(m.pctToNext)} to {m.next.label}
+            </div>
+          </div>
+        ) : (
+          <div style={{ fontSize: s.unit }} className="font-semibold text-accent">topped the charts 🏆</div>
+        )}
+      </div>
+    );
+  }
+
+  // wrapped (default) — the dense hero recap
+  const persona = derivePersona(stats);
   return (
     <div className="flex h-full flex-col justify-between">
       <div>
-        <Eyebrow s={s}>AI Usage · {stats.rangeLabel}</Eyebrow>
+        <Eyebrow s={s}>AI Wrapped · {stats.rangeLabel}</Eyebrow>
+        <div style={{ marginTop: s.gap * 0.7 }} className="flex flex-wrap items-center" >
+          <Chip s={s}>
+            <span style={{ fontSize: s.tileLabel + 4 }}>{persona.emoji}</span>
+            <span className="text-fg">{persona.title}</span>
+          </Chip>
+        </div>
         <div style={{ marginTop: s.gap }}>
           <Hero value={fmtCompact(stats.totalTokens)} unit="tokens" s={s} />
         </div>
@@ -199,7 +385,7 @@ function body(stats: ShareStats, template: ShareTemplate, ratio: ShareRatio, s: 
         <Tile label="Est. cost" value={fmtUSD(stats.cost)} s={s} />
         <Tile label="Messages" value={fmtNum(stats.messages)} s={s} />
         <Tile label="Sessions" value={fmtNum(stats.sessions)} s={s} />
-        <Tile label="Active days" value={fmtNum(stats.days)} s={s} />
+        <Tile label="Cache hit" value={fmtPct(stats.cacheHitRate)} s={s} />
       </div>
 
       <div>
@@ -209,7 +395,7 @@ function body(stats: ShareStats, template: ShareTemplate, ratio: ShareRatio, s: 
         >
           <span className="font-mono uppercase text-fg-muted">activity</span>
           <span className="font-mono uppercase text-fg-muted">
-            {fmtPct(stats.cacheHitRate)} cache hit
+            peak {shortDay(stats.peakDay)} {hourLabel(stats.peakHour)}
           </span>
         </div>
         <Spark data={stats.spark} width={inner} height={s.spark} />

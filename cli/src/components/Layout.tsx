@@ -14,6 +14,7 @@ export const SCREENS = [
   "CLIs",
   "Tools",
   "Cache",
+  "Wrapped",
 ] as const;
 
 // Tab label x-positions (row 0) for mouse hit-testing. Base = paddingX(1) +
@@ -98,7 +99,7 @@ export function Footer({ hints, status }: { hints: string; status: string }) {
 
 export function HelpOverlay() {
   const rows: [string, string][] = [
-    ["1–8 / Tab / ← →", "switch screens (or click a tab)"],
+    ["1–9 / Tab / ← →", "switch screens (or click a tab)"],
     ["↑ ↓  or  j k", "move selection (or click a row)"],
     ["Enter", "open detail (Projects, Sessions)"],
     ["Esc / Backspace", "back from detail"],
@@ -106,6 +107,7 @@ export function HelpOverlay() {
     ["s", "cycle source (CLI tool)"],
     ["c", "cycle scope (all / main / subagent)"],
     ["g / v", "Overview: cycle chart metric / style"],
+    ["g / e / o", "Wrapped: cycle card / export image / open"],
     ["m", "toggle heatmap metric (Activity)"],
     ["mouse", "click tabs/chips/rows · wheel scrolls"],
     ["r", "refresh — re-read the data dirs"],

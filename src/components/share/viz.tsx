@@ -4,6 +4,7 @@
 // (sparkline) or concrete hsl strings (donut/bars).
 
 import type { ShareSlice } from "@/lib/share";
+import type { HeatCell } from "@/lib/aggregate";
 
 export function Spark({ data, width, height }: { data: number[]; width: number; height: number }) {
   if (data.length < 2) return <div style={{ width, height }} />;
@@ -64,6 +65,41 @@ export function ShareBar({ pct, color, height = 10 }: { pct: number; color: stri
   return (
     <div className="w-full overflow-hidden rounded-full" style={{ height, background: "hsl(var(--fg) / 0.08)" }}>
       <div className="h-full rounded-full" style={{ width: `${Math.max(2, pct * 100)}%`, background: color }} />
+    </div>
+  );
+}
+
+/** hour × weekday activity grid (Sun→Sat rows, 0→23h cols), accent-shaded. */
+export function HeatGrid({ cells, width, gap = 3 }: { cells: HeatCell[]; width: number; gap?: number }) {
+  const grid: number[][] = Array.from({ length: 7 }, () => new Array(24).fill(0));
+  let max = 0;
+  for (const c of cells) {
+    grid[c.weekday][c.hour] = c.tokens;
+    if (c.tokens > max) max = c.tokens;
+  }
+  const cols = 24;
+  const cell = (width - gap * (cols - 1)) / cols;
+  const radius = Math.max(2, cell * 0.2);
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap }}>
+      {grid.map((row, d) => (
+        <div key={d} style={{ display: "flex", gap }}>
+          {row.map((v, h) => {
+            const a = max ? 0.14 + (v / max) * 0.86 : 0;
+            return (
+              <div
+                key={h}
+                style={{
+                  width: cell,
+                  height: cell,
+                  borderRadius: radius,
+                  background: v > 0 ? `hsl(var(--accent) / ${a.toFixed(3)})` : "hsl(var(--fg) / 0.05)",
+                }}
+              />
+            );
+          })}
+        </div>
+      ))}
     </div>
   );
 }

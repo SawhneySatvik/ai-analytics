@@ -2,19 +2,40 @@
 // response. Pure — no new API surface, just a reshape of data we already
 // compute. Used by the /share page and the ShareCard component.
 
-import type { SummaryResponse } from "./dto";
+import type { SummaryResponse, HeatmapData } from "./dto";
 import type { TokenUsage } from "./types";
 import { fmtDate } from "./format";
 
-export type ShareTemplate = "wrapped" | "tokens" | "cache" | "models";
+export type ShareTemplate =
+  | "wrapped"
+  | "persona"
+  | "receipt"
+  | "loadout"
+  | "rhythm"
+  | "milestone"
+  | "tokens"
+  | "cache"
+  | "models";
 export type ShareRatio = "landscape" | "square" | "story";
 
 export const TEMPLATES: { id: ShareTemplate; label: string; blurb: string }[] = [
-  { id: "wrapped", label: "Wrapped", blurb: "The all-rounder recap" },
+  { id: "wrapped", label: "Wrapped", blurb: "The hero recap" },
+  { id: "persona", label: "Persona", blurb: "Your coding archetype" },
+  { id: "receipt", label: "Receipt", blurb: "Itemized cost per model" },
+  { id: "loadout", label: "Loadout", blurb: "Your model stack" },
+  { id: "rhythm", label: "Rhythm", blurb: "When you actually code" },
+  { id: "milestone", label: "Milestone", blurb: "A moment worth posting" },
   { id: "tokens", label: "Token Maxer", blurb: "Big-number flex" },
   { id: "cache", label: "Cache Pro", blurb: "Caching efficiency" },
   { id: "models", label: "Model Mix", blurb: "Model breakdown" },
 ];
+
+/** The subset of /api/summary that share cards read — also satisfied by the
+ *  CLI's `Derived`, so both build identical ShareStats. */
+export type ShareInput = Pick<
+  SummaryResponse,
+  "summary" | "models" | "sources" | "projects" | "tools" | "daily" | "heatmap"
+>;
 
 export const RATIOS: Record<ShareRatio, { w: number; h: number; label: string; sub: string }> = {
   landscape: { w: 1200, h: 630, label: "Landscape", sub: "X · LinkedIn" },
@@ -31,6 +52,7 @@ export interface ShareSlice {
   color: string;
   pct: number; // 0..1 of total tokens
   tokens: number;
+  cost: number;
 }
 
 export interface ShareStats {
@@ -54,8 +76,11 @@ export interface ShareStats {
   topTool?: { name: string; count: number };
   peakHour: number | null;
   peakDay: string | null;
+  weekendPct: number; // 0..1 of weekday+weekend activity that lands on Sat/Sun
+  weekdayPct: number;
   busiestDay?: { label: string; tokens: number };
   spark: number[];
+  heatmap: HeatmapData; // for the Rhythm card (hour×weekday grid + marginals)
 }
 
 function argmax(arr: number[]): number | null {
@@ -65,19 +90,25 @@ function argmax(arr: number[]): number | null {
   return arr[best] > 0 ? best : null;
 }
 
-export function deriveShareStats(data: SummaryResponse, opts?: { redact?: boolean }): ShareStats {
+export function deriveShareStats(data: ShareInput, opts?: { redact?: boolean }): ShareStats {
   const { summary, models, sources, projects, tools, daily, heatmap } = data;
   const total = summary.totalTokens || 1;
 
   const modelSlices: ShareSlice[] = models
-    .map((m) => ({ label: m.label, color: m.color, tokens: tok(m.usage), pct: tok(m.usage) / total }))
+    .map((m) => ({ label: m.label, color: m.color, tokens: tok(m.usage), pct: tok(m.usage) / total, cost: m.cost }))
     .filter((s) => s.tokens > 0)
     .sort((a, b) => b.tokens - a.tokens);
 
   const sourceSlices: ShareSlice[] = sources
-    .map((s) => ({ label: s.label, color: s.color, tokens: tok(s.usage), pct: tok(s.usage) / total }))
+    .map((s) => ({ label: s.label, color: s.color, tokens: tok(s.usage), pct: tok(s.usage) / total, cost: s.cost }))
     .filter((s) => s.tokens > 0)
     .sort((a, b) => b.tokens - a.tokens);
+
+  // weekday vs weekend split from the heatmap marginals (0=Sun..6=Sat)
+  const wd = heatmap.weekdayTotals;
+  const weekend = (wd[0] ?? 0) + (wd[6] ?? 0);
+  const weekday = (wd[1] ?? 0) + (wd[2] ?? 0) + (wd[3] ?? 0) + (wd[4] ?? 0) + (wd[5] ?? 0);
+  const wTotal = weekend + weekday || 1;
 
   // busiest single day by token volume
   let busiest: { label: string; tokens: number } | undefined;
@@ -113,9 +144,12 @@ export function deriveShareStats(data: SummaryResponse, opts?: { redact?: boolea
     topTool: tools.tools[0] ? { name: tools.tools[0].name, count: tools.tools[0].count } : undefined,
     peakHour: argmax(heatmap.hourTotals),
     peakDay: peakDayIdx != null ? WEEKDAYS[peakDayIdx] : null,
+    weekendPct: weekend / wTotal,
+    weekdayPct: weekday / wTotal,
     busiestDay: busiest && busiest.tokens > 0
       ? { label: fmtDate(busiest.label), tokens: busiest.tokens }
       : undefined,
     spark: daily.map((d) => tok(d.usage)),
+    heatmap,
   };
 }
