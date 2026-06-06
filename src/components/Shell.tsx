@@ -21,6 +21,7 @@ import {
 import { useDashboard } from "./dashboard-context";
 import { useSnapshot } from "./snapshot-provider";
 import { Attribution } from "./Attribution";
+import { Logo } from "./Logo";
 import { FilterBar } from "./FilterBar";
 import { ThemeMenu } from "./ThemeMenu";
 import { cn } from "@/lib/utils";
@@ -183,10 +184,10 @@ export function Shell({ children }: { children: React.ReactNode }) {
         <div className="px-2 pb-6">
           <div className="flex items-center gap-2.5">
             <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-gradient-to-br from-accent/30 to-accent/5 text-accent shadow-card ring-1 ring-inset ring-accent/25">
-              <Activity className="h-4 w-4" />
+              <Logo size={18} />
             </div>
             <div>
-              <div className="text-sm font-semibold tracking-tight text-fg">CLI Usage</div>
+              <div className="text-sm font-semibold tracking-tight text-fg">agentmon</div>
               <div className="font-mono text-[9px] uppercase tracking-[0.18em] text-fg-muted">
                 local analytics
               </div>
@@ -208,8 +209,8 @@ export function Shell({ children }: { children: React.ReactNode }) {
           <header className="relative z-30 border-b border-border bg-bg/70 backdrop-blur-xl after:pointer-events-none after:absolute after:inset-x-0 after:bottom-0 after:h-px after:bg-gradient-to-r after:from-transparent after:via-accent/25 after:to-transparent">
             <div className="flex items-center justify-between gap-4 px-4 py-3 lg:px-6">
               <div className="flex items-center gap-2 lg:hidden">
-                <Activity className="h-4 w-4 text-accent" />
-                <span className="text-sm font-semibold text-fg">CLI Usage</span>
+                <Logo size={16} className="text-accent" />
+                <span className="text-sm font-semibold text-fg">agentmon</span>
               </div>
               <h1 className="hidden text-sm font-semibold tracking-tight text-fg lg:block">
                 {activeLabel(pathname)}

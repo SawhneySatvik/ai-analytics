@@ -7,9 +7,43 @@ import { DashboardProvider } from "@/components/dashboard-context";
 import { SnapshotProvider } from "@/components/snapshot-provider";
 import { Shell } from "@/components/Shell";
 
+// Set NEXT_PUBLIC_SITE_URL on the host to your real domain so OG/Twitter image
+// URLs resolve absolutely; the fallback keeps previews working out of the box.
+const SITE = process.env.NEXT_PUBLIC_SITE_URL ?? "https://agentmon.vercel.app";
+const DESCRIPTION =
+  "agentmon turns your local Claude Code, Codex & OpenCode transcripts into a beautiful tokens, cost, models, sessions and activity dashboard — on your machine, nothing uploaded.";
+
 export const metadata: Metadata = {
-  title: "CLI Usage Analytics",
-  description: "Local-first analytics over your Claude Code, Codex, and OpenCode usage.",
+  metadataBase: new URL(SITE),
+  title: {
+    default: "agentmon — local-first AI coding usage analytics",
+    template: "%s · agentmon",
+  },
+  description: DESCRIPTION,
+  applicationName: "agentmon",
+  authors: [{ name: "Satvik Sawhney", url: "https://satviksawhney.vercel.app" }],
+  keywords: [
+    "agentmon",
+    "Claude Code",
+    "Codex",
+    "OpenCode",
+    "AI coding analytics",
+    "token usage",
+    "LLM cost",
+    "local-first",
+  ],
+  openGraph: {
+    type: "website",
+    siteName: "agentmon",
+    url: SITE,
+    title: "agentmon — local-first AI coding usage analytics",
+    description: DESCRIPTION,
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "agentmon — local-first AI coding usage analytics",
+    description: DESCRIPTION,
+  },
 };
 
 // Resolve and apply the saved theme before paint to avoid a flash. Mirrors

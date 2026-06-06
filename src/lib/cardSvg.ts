@@ -354,7 +354,7 @@ export function renderCardSVG(stats: ShareStats, opts: CardOpts): string {
   // colophon footer
   const fy = h - pad + 36;
   els.push(line(left, fy - 28, w - pad, fy - 28, withAlpha(c.border, 1)));
-  els.push(text(left, fy, `CLI USAGE ANALYTICS · LOCAL · ON-DEVICE`, { size: 18, fill: c.fgMuted, mono: true, upper: true, spacing: 2 }));
+  els.push(text(left, fy, `AGENTMON · LOCAL · ON-DEVICE`, { size: 18, fill: c.fgMuted, mono: true, upper: true, spacing: 2 }));
   els.push(text(w - pad, fy, `${opts.handle ? opts.handle + " · " : ""}Nº ${no}`, { size: 18, fill: c.fgMuted, mono: true, upper: true, anchor: "end", spacing: 2 }));
 
   return `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}">${els.join("")}</svg>`;
