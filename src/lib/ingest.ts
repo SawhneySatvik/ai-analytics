@@ -9,7 +9,7 @@ import type {
   Snapshot,
 } from "./types";
 import { getEnabledLoaders } from "./sources";
-import type { DiscoverResult, RawMessage } from "./sources/types";
+import type { DiscoverResult, LoaderResult, RawMessage } from "./sources/types";
 
 // ── orchestration ────────────────────────────────────────────────────────────
 // buildSnapshot fans out to each enabled source loader (Claude Code, Codex, …),
@@ -29,28 +29,44 @@ export async function buildSnapshot(discovered?: DiscoverResult[]): Promise<Snap
   const loaders = getEnabledLoaders();
   const discMap = new Map((discovered ?? []).map((d) => [d.source, d]));
 
+  const results: LoaderResult[] = [];
+  const loadWarnings: string[] = [];
+  for (const loader of loaders) {
+    const d = discMap.get(loader.source);
+    if (d && !d.present) continue;
+    try {
+      results.push(await loader.load(d));
+    } catch (err) {
+      loadWarnings.push(
+        `Failed to read ${loader.source} data: ${err instanceof Error ? err.message : "unknown error"}`,
+      );
+    }
+  }
+  return finalizeSnapshot(results, { startedAt: started, extraWarnings: loadWarnings });
+}
+
+/**
+ * Combine loader results into a Snapshot: merge messages/session-meta/history,
+ * materialize per-message cost (recorded cost preferred over estimate), collect
+ * unpriced-model warnings, and sort. Pure (no fs) — shared by the Node
+ * `buildSnapshot` and the browser ingest path.
+ */
+export function finalizeSnapshot(
+  results: LoaderResult[],
+  opts?: { startedAt?: number; extraWarnings?: string[] },
+): Snapshot {
+  const started = opts?.startedAt ?? Date.now();
   const raw: RawMessage[] = [];
   const sessionMetaObj: Record<string, SessionMeta> = {};
   const history: HistoryEntry[] = [];
-  const warnings: string[] = [];
+  const warnings: string[] = [...(opts?.extraWarnings ?? [])];
   let fileCount = 0;
   let lineCount = 0;
   let assistantLineCount = 0;
   let duplicateLineCount = 0;
   let malformedLineCount = 0;
 
-  for (const loader of loaders) {
-    const d = discMap.get(loader.source);
-    if (d && !d.present) continue;
-    let res;
-    try {
-      res = await loader.load(d);
-    } catch (err) {
-      warnings.push(
-        `Failed to read ${loader.source} data: ${err instanceof Error ? err.message : "unknown error"}`,
-      );
-      continue;
-    }
+  for (const res of results) {
     raw.push(...res.messages);
     for (const [id, sm] of res.sessionMeta) sessionMetaObj[id] = normalizeMeta(sm);
     history.push(...res.history);
