@@ -31,7 +31,7 @@ npm i -g agentmon
 agentmon
 ```
 
-Requires **Node 18+** (Node **22.6+** to include OpenCode, which uses the built-in `node:sqlite`; otherwise OpenCode is skipped automatically).
+Requires **Node 18+**. OpenCode support additionally needs the built-in `node:sqlite` (**Node 22.5+** — on the earliest 22.x releases it sits behind the `--experimental-sqlite` flag). Where it isn't available, OpenCode is skipped automatically and Claude Code + Codex still work.
 
 ## Screens
 
