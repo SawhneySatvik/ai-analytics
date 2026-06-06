@@ -7,8 +7,8 @@ import { DashboardProvider } from "@/components/dashboard-context";
 import { Shell } from "@/components/Shell";
 
 export const metadata: Metadata = {
-  title: "Claude Usage Analytics",
-  description: "Local-first analytics over your ~/.claude usage data.",
+  title: "CLI Usage Analytics",
+  description: "Local-first analytics over your Claude Code, Codex, and OpenCode usage.",
 };
 
 // Set the theme class before paint to avoid a flash. Defaults to dark.

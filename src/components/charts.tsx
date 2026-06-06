@@ -20,8 +20,17 @@ import {
 import { cn } from "@/lib/utils";
 import { fmtCompact } from "@/lib/format";
 
-const GRID = "rgba(125,125,135,0.16)";
-const AXIS = "rgba(125,125,135,0.85)";
+const GRID = "rgba(125,125,135,0.13)";
+const AXIS = "rgba(125,125,135,0.8)";
+const CURSOR = "rgba(125,125,135,0.4)";
+const DOT_RING = "rgba(125,125,135,0.5)";
+
+// Tuned draw-in: crisper than the ~1.5s recharts default.
+const ANIM = { isAnimationActive: true, animationDuration: 700, animationEasing: "ease-out" } as const;
+
+// Sanitize an arbitrary series key into a valid SVG gradient id (model keys can
+// contain ":" and "/", which break url(#...) references and drop the fill).
+const safeId = (k: string) => "g-" + k.replace(/[^a-zA-Z0-9_-]/g, "_");
 
 export const TOKEN_SERIES = [
   { key: "input", name: "Input", color: "hsl(217 91% 60%)" },
@@ -36,6 +45,25 @@ interface Series {
   color: string;
 }
 
+function allZero(data: object[], keys: string[]): boolean {
+  if (!data.length) return true;
+  return data.every((row) =>
+    keys.every((k) => !Number((row as Record<string, unknown>)[k])),
+  );
+}
+
+function ChartEmpty({ height }: { height: number }) {
+  return (
+    <div
+      className="flex flex-col items-center justify-center gap-1 text-fg-muted"
+      style={{ height }}
+    >
+      <div className="h-8 w-8 rounded-full border border-dashed border-border" />
+      <span className="text-xs">No data in range</span>
+    </div>
+  );
+}
+
 interface TooltipBoxProps {
   active?: boolean;
   label?: string | number;
@@ -47,17 +75,17 @@ interface TooltipBoxProps {
 function TooltipBox({ active, label, payload, fmt = fmtCompact, labelFmt }: TooltipBoxProps) {
   if (!active || !payload || payload.length === 0) return null;
   return (
-    <div className="rounded-lg border border-border bg-bg-elev/95 px-3 py-2 shadow-lg backdrop-blur">
+    <div className="min-w-[9rem] rounded-xl border border-border/80 bg-bg-elev/95 px-3 py-2 shadow-pop backdrop-blur motion-safe:animate-pop-in">
       {label != null && (
-        <div className="mb-1 font-mono text-[10px] uppercase tracking-[0.14em] text-fg-muted">
+        <div className="mb-1.5 font-mono text-[10px] uppercase tracking-[0.14em] text-fg-muted">
           {labelFmt ? labelFmt(label) : label}
         </div>
       )}
-      <div className="space-y-0.5">
+      <div className="space-y-1">
         {payload.map((p, i) => (
           <div key={i} className="flex items-center justify-between gap-4 text-xs">
             <span className="flex items-center gap-1.5 text-fg-muted">
-              <span className="h-2 w-2 rounded-[2px]" style={{ background: p.color }} />
+              <span className="h-2 w-2 rounded-[3px]" style={{ background: p.color }} />
               {p.name}
             </span>
             <span className="tabular font-medium text-fg">{fmt(p.value ?? 0)}</span>
@@ -69,6 +97,37 @@ function TooltipBox({ active, label, payload, fmt = fmtCompact, labelFmt }: Tool
 }
 
 const margin = { top: 8, right: 8, bottom: 0, left: 0 };
+const lineCursor = { stroke: CURSOR, strokeWidth: 1, strokeDasharray: "4 4" };
+
+// NOTE: Recharts only detects axis/grid elements when they are DIRECT children
+// of the chart, so these are inlined per chart (not extracted to a component).
+function gridEl() {
+  return <CartesianGrid stroke={GRID} vertical={false} />;
+}
+function xAxisEl(xKey: string, xFormat?: (v: string | number) => string, minTickGap = 24) {
+  return (
+    <XAxis
+      dataKey={xKey}
+      tick={{ fontSize: 11, fill: AXIS }}
+      tickFormatter={xFormat}
+      tickLine={false}
+      axisLine={{ stroke: GRID }}
+      tickMargin={8}
+      minTickGap={minTickGap}
+    />
+  );
+}
+function yAxisEl(valueFormat: (n: number) => string) {
+  return (
+    <YAxis
+      tick={{ fontSize: 11, fill: AXIS }}
+      tickFormatter={(v) => valueFormat(Number(v))}
+      tickLine={false}
+      axisLine={false}
+      width={44}
+    />
+  );
+}
 
 export function StackedAreaChart({
   data,
@@ -85,34 +144,22 @@ export function StackedAreaChart({
   valueFormat?: (n: number) => string;
   xFormat?: (v: string | number) => string;
 }) {
+  if (allZero(data, series.map((s) => s.key))) return <ChartEmpty height={height} />;
   return (
     <ResponsiveContainer width="100%" height={height}>
       <AreaChart data={data} margin={margin}>
         <defs>
           {series.map((s) => (
-            <linearGradient key={s.key} id={`grad-${s.key}`} x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor={s.color} stopOpacity={0.5} />
-              <stop offset="100%" stopColor={s.color} stopOpacity={0.04} />
+            <linearGradient key={s.key} id={safeId(s.key)} x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor={s.color} stopOpacity={0.55} />
+              <stop offset="100%" stopColor={s.color} stopOpacity={0.02} />
             </linearGradient>
           ))}
         </defs>
-        <CartesianGrid stroke={GRID} vertical={false} />
-        <XAxis
-          dataKey={xKey}
-          tick={{ fontSize: 11, fill: AXIS }}
-          tickFormatter={xFormat}
-          tickLine={false}
-          axisLine={{ stroke: GRID }}
-          minTickGap={24}
-        />
-        <YAxis
-          tick={{ fontSize: 11, fill: AXIS }}
-          tickFormatter={(v) => valueFormat(Number(v))}
-          tickLine={false}
-          axisLine={false}
-          width={44}
-        />
-        <Tooltip content={<TooltipBox fmt={valueFormat} labelFmt={xFormat} />} />
+        {gridEl()}
+        {xAxisEl(xKey, xFormat)}
+        {yAxisEl(valueFormat)}
+        <Tooltip cursor={lineCursor} content={<TooltipBox fmt={valueFormat} labelFmt={xFormat} />} />
         {series.map((s) => (
           <Area
             key={s.key}
@@ -121,8 +168,10 @@ export function StackedAreaChart({
             name={s.name}
             stackId="1"
             stroke={s.color}
-            strokeWidth={1.5}
-            fill={`url(#grad-${s.key})`}
+            strokeWidth={2}
+            fill={`url(#${safeId(s.key)})`}
+            activeDot={{ r: 3.5, strokeWidth: 2, stroke: DOT_RING }}
+            {...ANIM}
           />
         ))}
       </AreaChart>
@@ -145,26 +194,14 @@ export function MultiLineChart({
   valueFormat?: (n: number) => string;
   xFormat?: (v: string | number) => string;
 }) {
+  if (allZero(data, series.map((s) => s.key))) return <ChartEmpty height={height} />;
   return (
     <ResponsiveContainer width="100%" height={height}>
       <LineChart data={data} margin={margin}>
-        <CartesianGrid stroke={GRID} vertical={false} />
-        <XAxis
-          dataKey={xKey}
-          tick={{ fontSize: 11, fill: AXIS }}
-          tickFormatter={xFormat}
-          tickLine={false}
-          axisLine={{ stroke: GRID }}
-          minTickGap={24}
-        />
-        <YAxis
-          tick={{ fontSize: 11, fill: AXIS }}
-          tickFormatter={(v) => valueFormat(Number(v))}
-          tickLine={false}
-          axisLine={false}
-          width={44}
-        />
-        <Tooltip content={<TooltipBox fmt={valueFormat} labelFmt={xFormat} />} />
+        {gridEl()}
+        {xAxisEl(xKey, xFormat)}
+        {yAxisEl(valueFormat)}
+        <Tooltip cursor={lineCursor} content={<TooltipBox fmt={valueFormat} labelFmt={xFormat} />} />
         {series.map((s) => (
           <Line
             key={s.key}
@@ -174,7 +211,8 @@ export function MultiLineChart({
             stroke={s.color}
             strokeWidth={2}
             dot={false}
-            activeDot={{ r: 3 }}
+            activeDot={{ r: 4, strokeWidth: 2, stroke: DOT_RING }}
+            {...ANIM}
           />
         ))}
       </LineChart>
@@ -199,27 +237,15 @@ export function SimpleBarChart({
   xFormat?: (v: string | number) => string;
   stacked?: boolean;
 }) {
+  if (allZero(data, bars.map((b) => b.key))) return <ChartEmpty height={height} />;
   return (
     <ResponsiveContainer width="100%" height={height}>
       <BarChart data={data} margin={margin}>
-        <CartesianGrid stroke={GRID} vertical={false} />
-        <XAxis
-          dataKey={xKey}
-          tick={{ fontSize: 11, fill: AXIS }}
-          tickFormatter={xFormat}
-          tickLine={false}
-          axisLine={{ stroke: GRID }}
-          minTickGap={16}
-        />
-        <YAxis
-          tick={{ fontSize: 11, fill: AXIS }}
-          tickFormatter={(v) => valueFormat(Number(v))}
-          tickLine={false}
-          axisLine={false}
-          width={44}
-        />
+        {gridEl()}
+        {xAxisEl(xKey, xFormat)}
+        {yAxisEl(valueFormat)}
         <Tooltip
-          cursor={{ fill: "rgba(125,125,135,0.08)" }}
+          cursor={{ fill: "rgba(125,125,135,0.07)" }}
           content={<TooltipBox fmt={valueFormat} labelFmt={xFormat} />}
         />
         {bars.map((b) => (
@@ -229,8 +255,9 @@ export function SimpleBarChart({
             name={b.name}
             stackId={stacked ? "1" : undefined}
             fill={b.color}
-            radius={stacked ? [0, 0, 0, 0] : [3, 3, 0, 0]}
+            radius={stacked ? [0, 0, 0, 0] : [4, 4, 0, 0]}
             maxBarSize={48}
+            {...ANIM}
           />
         ))}
       </BarChart>
@@ -251,6 +278,7 @@ export function DonutChart({
   centerLabel?: string;
   centerValue?: string;
 }) {
+  if (!data.length || data.every((d) => !d.value)) return <ChartEmpty height={height} />;
   return (
     <div className="relative" style={{ height }}>
       <ResponsiveContainer width="100%" height={height}>
@@ -263,6 +291,7 @@ export function DonutChart({
             outerRadius="92%"
             paddingAngle={1.5}
             stroke="none"
+            {...ANIM}
           >
             {data.map((d, i) => (
               <Cell key={i} fill={d.color} />
@@ -274,7 +303,7 @@ export function DonutChart({
       {(centerLabel || centerValue) && (
         <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center">
           {centerValue && (
-            <span className="text-2xl font-semibold tracking-tight text-fg tabular">
+            <span className="text-2xl font-semibold tracking-tighter2 text-fg tabular">
               {centerValue}
             </span>
           )}
@@ -299,16 +328,24 @@ export function Sparkline({
   height?: number;
 }) {
   const chartData = data.map((v, i) => ({ i, v }));
+  const gid = safeId(`spark-${color}`);
   return (
     <ResponsiveContainer width="100%" height={height}>
       <AreaChart data={chartData} margin={{ top: 2, right: 0, bottom: 0, left: 0 }}>
         <defs>
-          <linearGradient id={`spark-${color}`} x1="0" y1="0" x2="0" y2="1">
+          <linearGradient id={gid} x1="0" y1="0" x2="0" y2="1">
             <stop offset="0%" stopColor={color} stopOpacity={0.4} />
             <stop offset="100%" stopColor={color} stopOpacity={0} />
           </linearGradient>
         </defs>
-        <Area type="monotone" dataKey="v" stroke={color} strokeWidth={1.5} fill={`url(#spark-${color})`} />
+        <Area
+          type="monotone"
+          dataKey="v"
+          stroke={color}
+          strokeWidth={1.75}
+          fill={`url(#${gid})`}
+          {...ANIM}
+        />
       </AreaChart>
     </ResponsiveContainer>
   );
@@ -344,17 +381,19 @@ export function BarList({
         const Inner = (
           <div
             className={cn(
-              "group relative overflow-hidden rounded-lg border border-border/60 bg-bg/40 px-3 py-2",
-              interactive && "cursor-pointer transition-colors hover:border-accent/50",
+              "group relative overflow-hidden rounded-lg border border-border/60 bg-bg/40 px-3 py-2 transition-[transform,border-color] duration-200",
+              interactive && "cursor-pointer hover:-translate-y-px hover:border-accent/50",
             )}
           >
             <div
-              className="absolute inset-y-0 left-0 rounded-lg opacity-25 transition-all group-hover:opacity-40"
+              className="absolute inset-y-0 left-0 rounded-lg opacity-[0.22] transition-all duration-300 group-hover:opacity-40"
               style={{ width: `${pct}%`, background: item.color ?? "hsl(217 91% 60%)" }}
             />
             <div className="relative flex items-center justify-between gap-3">
               <div className="min-w-0">
-                <div className="truncate text-sm text-fg">{item.label}</div>
+                <div className="truncate text-sm text-fg" title={item.label}>
+                  {item.label}
+                </div>
                 {item.sub && <div className="truncate text-[11px] text-fg-muted">{item.sub}</div>}
               </div>
               <div className="tabular text-sm font-medium text-fg">{valueFormat(item.value)}</div>
@@ -412,13 +451,15 @@ export function Heatmap({
             <div className="grid flex-1 grid-cols-24 gap-[3px]">
               {Array.from({ length: 24 }).map((_, h) => {
                 const v = grid.get(`${w}:${h}`) ?? 0;
-                const alpha = max > 0 ? 0.08 + (v / max) * 0.92 : 0.06;
+                const alpha = max > 0 ? 0.1 + (v / max) * 0.85 : 0;
                 return (
                   <div
                     key={h}
                     title={`${wd} ${h}:00 — ${v.toLocaleString()} ${metric}`}
-                    className="aspect-square rounded-[3px] border border-border/40"
-                    style={{ background: v > 0 ? `rgba(59,130,246,${alpha})` : "transparent" }}
+                    className="aspect-square rounded-[3px] border border-border/40 transition-transform duration-150 hover:scale-[1.25] hover:ring-1 hover:ring-accent/60"
+                    style={{
+                      background: v > 0 ? `hsl(var(--accent) / ${alpha})` : "hsl(var(--fg) / 0.03)",
+                    }}
                   />
                 );
               })}

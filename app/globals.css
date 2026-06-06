@@ -14,6 +14,16 @@
     --accent-soft: 222 80% 88%;
     --success: 158 50% 36%;
     color-scheme: light;
+
+    /* Elevation — soft grey shadows + a bright top-edge highlight so cards
+       catch light. Each layer ends with an inset hairline highlight. */
+    --shadow-card: 0 1px 2px hsl(220 25% 12% / 0.05), 0 4px 12px -3px hsl(220 25% 12% / 0.08),
+      inset 0 1px 0 0 hsl(0 0% 100% / 0.7);
+    --shadow-card-hover: 0 2px 4px hsl(220 25% 12% / 0.07), 0 14px 30px -8px hsl(220 25% 12% / 0.16),
+      inset 0 1px 0 0 hsl(0 0% 100% / 0.9);
+    --shadow-pop: 0 10px 34px -8px hsl(220 25% 12% / 0.2), inset 0 1px 0 0 hsl(0 0% 100% / 0.8);
+    --sheen: hsl(0 0% 100% / 0.5);
+    --grid-line: 220 14% 36%;
   }
 
   /* Dark — near-black slate, bright cyan accent. App defaults to this. */
@@ -27,6 +37,16 @@
     --accent-soft: 217 70% 26%;
     --success: 158 64% 48%;
     color-scheme: dark;
+
+    /* Elevation — deep low-alpha drop shadows + a faint white inset highlight
+       on the top edge for a premium layered feel. */
+    --shadow-card: 0 1px 2px hsl(0 0% 0% / 0.4), 0 6px 16px -6px hsl(0 0% 0% / 0.5),
+      inset 0 1px 0 0 hsl(0 0% 100% / 0.05);
+    --shadow-card-hover: 0 2px 4px hsl(0 0% 0% / 0.45), 0 16px 32px -10px hsl(0 0% 0% / 0.6),
+      inset 0 1px 0 0 hsl(0 0% 100% / 0.08);
+    --shadow-pop: 0 12px 38px -8px hsl(0 0% 0% / 0.65), inset 0 1px 0 0 hsl(0 0% 100% / 0.06);
+    --sheen: hsl(0 0% 100% / 0.06);
+    --grid-line: 220 12% 62%;
   }
 
   * {
@@ -39,10 +59,23 @@
   }
 
   body {
-    background: hsl(var(--bg));
+    /* Subtle atmospheric sheen — a soft accent glow at the top of the page that
+       fades to the flat background. Fixed so it stays put while scrolling. */
+    background:
+      radial-gradient(1100px 520px at 50% -8%, hsl(var(--accent) / 0.07), transparent 62%),
+      hsl(var(--bg));
+    background-attachment: fixed;
     color: hsl(var(--fg));
     font-family: var(--font-geist-sans), system-ui, sans-serif;
     font-feature-settings: "cv11", "ss01";
+  }
+
+  /* One cohesive accent focus ring for every interactive element (the app had
+     none before). Follows the element's own border radius. */
+  :focus-visible {
+    outline: 2px solid hsl(var(--accent) / 0.6);
+    outline-offset: 2px;
+    border-radius: 4px;
   }
 
   /* Thin, theme-aware scrollbars for the long tables/lists. */
@@ -54,9 +87,26 @@
     background: hsl(var(--border));
     border-radius: 999px;
     border: 2px solid hsl(var(--bg));
+    transition: background 0.2s;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: hsl(var(--fg-muted) / 0.7);
   }
   ::-webkit-scrollbar-track {
     background: transparent;
+  }
+
+  /* Respect reduced-motion everywhere: collapse all animation/transition so
+     content lands in its final state instantly. */
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.001ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.001ms !important;
+      scroll-behavior: auto !important;
+    }
   }
 }
 
@@ -70,6 +120,27 @@
   .tabular {
     font-variant-numeric: tabular-nums;
   }
+
+  /* Shimmer skeleton — a moving highlight sweep instead of a bare pulse. */
+  .skeleton {
+    position: relative;
+    overflow: hidden;
+    background: hsl(var(--fg) / 0.05);
+  }
+  .skeleton::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    transform: translateX(-100%);
+    background: linear-gradient(90deg, transparent, hsl(var(--fg) / 0.07), transparent);
+    animation: shimmer 1.6s infinite;
+  }
+
+  /* A faint top-down sheen overlay for hero/feature surfaces. */
+  .sheen-top {
+    background-image: linear-gradient(180deg, var(--sheen), transparent 40%);
+  }
+
   /* Recharts: make the focus/active outlines disappear and inherit theme. */
   .recharts-surface:focus,
   .recharts-wrapper:focus {
@@ -77,5 +148,15 @@
   }
   .recharts-cartesian-axis-tick-value {
     fill: hsl(var(--fg-muted));
+  }
+  /* Crosshair cursor line on hover. */
+  .recharts-tooltip-cursor {
+    transition: opacity 0.15s;
+  }
+  /* Clean donut segment separators that match the card surface (theme-aware;
+     a CSS rule so the var() resolves, unlike an inline SVG attribute). */
+  .recharts-pie-sector path {
+    stroke: hsl(var(--bg-elev));
+    stroke-width: 1.5px;
   }
 }
