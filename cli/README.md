@@ -1,10 +1,14 @@
 # agentmon
 
+[![Star on GitHub](https://img.shields.io/github/stars/SawhneySatvik/ai-analytics?style=social)](https://github.com/SawhneySatvik/ai-analytics)
+
 A fast terminal dashboard for your local AI coding usage — **Claude Code**, **OpenAI Codex**, and **OpenCode** — in one place. Reads your data on-device; nothing ever leaves your machine.
 
 ```bash
 npx agentmon
 ```
+
+Built by **[Satvik Sawhney](https://satviksawhney.vercel.app)** — if you like it, please ⭐ the [repo](https://github.com/SawhneySatvik/ai-analytics).
 
 <!-- screenshot -->
 
@@ -78,3 +82,10 @@ ANALYTICS_SOURCES  comma list, e.g. claude,codex   (default: all)
 ## Privacy
 
 Everything runs locally. `agentmon` only reads your own usage files and renders them in your terminal — there is no network call and nothing is uploaded.
+
+## Author
+
+Built by **[Satvik Sawhney](https://satviksawhney.vercel.app)** —
+[portfolio](https://satviksawhney.vercel.app) · [GitHub](https://github.com/SawhneySatvik).
+
+If `agentmon` is useful to you, please **[⭐ star it on GitHub](https://github.com/SawhneySatvik/ai-analytics)**.

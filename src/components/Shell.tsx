@@ -18,6 +18,7 @@ import {
 
 import { useDashboard } from "./dashboard-context";
 import { useSnapshot } from "./snapshot-provider";
+import { Attribution } from "./Attribution";
 import { FilterBar } from "./FilterBar";
 import { ThemeMenu } from "./ThemeMenu";
 import { cn } from "@/lib/utils";
@@ -170,8 +171,11 @@ export function Shell({ children }: { children: React.ReactNode }) {
           </div>
         </div>
         <NavRail />
-        <div className="mt-auto px-2 pt-4 font-mono text-[9px] uppercase tracking-[0.14em] text-fg-muted">
-          reads ~/.claude · ~/.codex · opencode · on-device
+        <div className="mt-auto space-y-3 px-2 pt-4">
+          <div className="font-mono text-[9px] uppercase tracking-[0.14em] text-fg-muted">
+            reads ~/.claude · ~/.codex · opencode · on-device
+          </div>
+          <Attribution variant="compact" />
         </div>
       </aside>
 

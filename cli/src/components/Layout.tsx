@@ -3,6 +3,7 @@ import { Box, Text } from "ink";
 
 import { palette } from "../theme.js";
 import { useMouse } from "../mouse.js";
+import { CREDIT_LINE, STAR_LINE } from "../meta.js";
 
 export const SCREENS = [
   "Overview",
@@ -125,6 +126,9 @@ export function HelpOverlay() {
           <Text color={palette.muted}>{d}</Text>
         </Box>
       ))}
+      <Box height={1} />
+      <Text color={palette.accent}>{STAR_LINE}</Text>
+      <Text color={palette.dim}>{CREDIT_LINE}</Text>
       <Box height={1} />
       <Text color={palette.dim}>press any key to close</Text>
     </Box>

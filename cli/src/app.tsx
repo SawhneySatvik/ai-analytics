@@ -6,6 +6,7 @@ import { derive, loadSnapshot, type Derived, type Filters, type ScreenProps } fr
 import type { Snapshot } from "@core/types";
 import { relativeTime } from "@core/format";
 import { palette } from "./theme.js";
+import { FOOTER_STAR } from "./meta.js";
 import { Footer, HelpOverlay, SCREENS, TabBar } from "./components/Layout.js";
 import { FilterBar, RANGES, SOURCES, SCOPES } from "./components/FilterBar.js";
 import { Spinner } from "./components/ui.js";
@@ -145,7 +146,11 @@ export function App({ initial }: { initial: InitialOptions }) {
   const contentHeight = Math.max(6, rows - 7);
   const props: ScreenProps = { d, snap, width: cols, height: contentHeight, contentTop: CONTENT_TOP, compact };
   const Active = SCREEN_COMPS[screen] ?? Overview;
-  const status = refreshing ? "⟳ ingesting…" : `ingested ${relativeTime(snap.builtAt)}`;
+  const status = refreshing
+    ? "⟳ ingesting…"
+    : compact
+      ? `ingested ${relativeTime(snap.builtAt)}`
+      : `${FOOTER_STAR} · ingested ${relativeTime(snap.builtAt)}`;
   const hints = compact
     ? "↑↓ ⏎ · d s c · r · ? · q"
     : "1–8 tabs · ↑↓ ⏎ · d days · s src · c scope · r refresh · ? help · q quit";

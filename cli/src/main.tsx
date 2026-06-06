@@ -6,8 +6,7 @@ import { RANGES, SOURCES, SCOPES } from "./components/FilterBar.js";
 import { loadSnapshot, derive, tok, type Filters, type Derived } from "./data.js";
 import type { Snapshot } from "@core/types";
 import { fmtCompact, fmtNum, fmtPct, fmtUSD } from "@core/format";
-
-const VERSION = "0.1.0";
+import { VERSION, CREDIT_LINE, STAR_LINE } from "./meta.js";
 
 const HELP = `agentmon — terminal dashboard for your AI coding usage
 
@@ -30,6 +29,9 @@ Keys (in the TUI)
   ?  help             q / Ctrl-C  quit
 
 Reads ~/.claude, ~/.codex and OpenCode on-device. Nothing leaves your machine.
+
+${CREDIT_LINE}
+${STAR_LINE}
 `;
 
 function optValue(argv: string[], name: string, def: string): string {
@@ -45,7 +47,7 @@ export async function main(argv: string[]): Promise<void> {
     return;
   }
   if (has("-v") || has("--version")) {
-    process.stdout.write(`agentmon ${VERSION}\n`);
+    process.stdout.write(`agentmon ${VERSION}\n${CREDIT_LINE}\n${STAR_LINE}\n`);
     return;
   }
 
@@ -109,6 +111,7 @@ function printStatic(d: Derived): void {
     top ? `  Top model  ${top.label} (${fmtPct(tok(top.usage) / (s.totalTokens || 1))})` : "",
     "",
     "  (run in an interactive terminal for the full dashboard)",
+    `  ${STAR_LINE}`,
   ].filter(Boolean);
   process.stdout.write(lines.join("\n") + "\n");
 }

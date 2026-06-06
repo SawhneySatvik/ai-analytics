@@ -1,5 +1,9 @@
 # Coding CLI Usage Analytics
 
+[![Star on GitHub](https://img.shields.io/github/stars/SawhneySatvik/ai-analytics?style=social)](https://github.com/SawhneySatvik/ai-analytics)
+
+Built by **[Satvik Sawhney](https://satviksawhney.vercel.app)** · [GitHub](https://github.com/SawhneySatvik) — if you find this useful, please ⭐ the [repo](https://github.com/SawhneySatvik/ai-analytics).
+
 A dashboard over your AI coding-CLI usage — tokens, cost (estimated), models,
 projects, sessions, tools, cache behavior, and activity patterns. It reads
 **Claude Code** (`~/.claude`), **OpenAI Codex CLI** (`~/.codex`), and **OpenCode**
@@ -176,3 +180,11 @@ npm run lint
   cache reads at their cheap rate.
 - Day buckets use the machine's (or visitor's) local timezone.
 - Honors `prefers-reduced-motion`.
+
+## Author
+
+Built by **[Satvik Sawhney](https://satviksawhney.vercel.app)** —
+[portfolio](https://satviksawhney.vercel.app) · [GitHub](https://github.com/SawhneySatvik).
+
+If this is useful to you, please **[⭐ star the repo](https://github.com/SawhneySatvik/ai-analytics)** —
+it genuinely helps.

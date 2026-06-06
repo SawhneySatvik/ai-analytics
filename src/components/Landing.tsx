@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 
 import { useSnapshot } from "@/components/snapshot-provider";
+import { Attribution } from "@/components/Attribution";
 import { sourceFilesFromDataTransfer } from "@/lib/browser/dropzone";
 import { cn } from "@/lib/utils";
 
@@ -230,9 +231,12 @@ export function Landing() {
             </>
           )}
 
-          <div className="mt-6 flex items-center justify-center gap-1.5 border-t border-border pt-4 text-[11px] text-fg-muted">
-            <ShieldCheck className="h-3.5 w-3.5 text-emerald-500" />
-            100% on-device — your data never leaves this browser.
+          <div className="mt-6 space-y-3 border-t border-border pt-4">
+            <div className="flex items-center justify-center gap-1.5 text-[11px] text-fg-muted">
+              <ShieldCheck className="h-3.5 w-3.5 text-emerald-500" />
+              100% on-device — your data never leaves this browser.
+            </div>
+            <Attribution />
           </div>
         </div>
 
