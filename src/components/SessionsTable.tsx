@@ -91,7 +91,7 @@ export function SessionsTable({
       columns={columns}
       rows={sessions}
       rowKey={(s) => s.sessionId}
-      onRowClick={(s) => router.push(`/sessions/${s.sessionId}`)}
+      onRowClick={(s) => router.push(`/sessions?id=${encodeURIComponent(s.sessionId)}`)}
       empty="No sessions in range"
     />
   );
