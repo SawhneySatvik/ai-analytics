@@ -3,31 +3,40 @@
 @tailwind utilities;
 
 @layer base {
-  /* Light — warm cream, bluer accent (mirrors the resume site's default theme). */
-  :root {
-    --bg: 36 20% 92%;
-    --bg-elev: 36 16% 87%;
-    --fg: 220 25% 12%;
-    --fg-muted: 220 14% 36%;
-    --border: 220 18% 74%;
-    --accent: 222 88% 44%;
-    --accent-soft: 222 80% 88%;
-    --success: 158 50% 36%;
-    color-scheme: light;
+  /* ── Theming ──────────────────────────────────────────────────────────────
+     One CSS-var contract, six themes. The theme is selected by a `data-theme`
+     attribute on <html> (set before paint by the inline script in layout.tsx);
+     :root holds the default (Midnight) so there is never an unstyled flash.
 
-    /* Elevation — soft grey shadows + a bright top-edge highlight so cards
-       catch light. Each layer ends with an inset hairline highlight. */
+     Dark family reuses one deep-shadow recipe; light family reuses a soft-grey
+     one — declared once below and referenced by `--shadow-card`, etc.
+     ──────────────────────────────────────────────────────────────────────── */
+
+  /* Shared elevation recipes (deep for dark surfaces, soft for light). */
+  :root,
+  [data-theme="nord"],
+  [data-theme="mono"] {
+    --shadow-card: 0 1px 2px hsl(0 0% 0% / 0.4), 0 6px 16px -6px hsl(0 0% 0% / 0.5),
+      inset 0 1px 0 0 hsl(0 0% 100% / 0.05);
+    --shadow-card-hover: 0 2px 4px hsl(0 0% 0% / 0.45), 0 16px 32px -10px hsl(0 0% 0% / 0.6),
+      inset 0 1px 0 0 hsl(0 0% 100% / 0.08);
+    --shadow-pop: 0 12px 38px -8px hsl(0 0% 0% / 0.65), inset 0 1px 0 0 hsl(0 0% 100% / 0.06);
+    --sheen: hsl(0 0% 100% / 0.06);
+  }
+  [data-theme="paper"],
+  [data-theme="rose"],
+  [data-theme="solar"] {
     --shadow-card: 0 1px 2px hsl(220 25% 12% / 0.05), 0 4px 12px -3px hsl(220 25% 12% / 0.08),
       inset 0 1px 0 0 hsl(0 0% 100% / 0.7);
     --shadow-card-hover: 0 2px 4px hsl(220 25% 12% / 0.07), 0 14px 30px -8px hsl(220 25% 12% / 0.16),
       inset 0 1px 0 0 hsl(0 0% 100% / 0.9);
     --shadow-pop: 0 10px 34px -8px hsl(220 25% 12% / 0.2), inset 0 1px 0 0 hsl(0 0% 100% / 0.8);
     --sheen: hsl(0 0% 100% / 0.5);
-    --grid-line: 220 14% 36%;
   }
 
-  /* Dark — near-black slate, bright cyan accent. App defaults to this. */
-  .dark {
+  /* Midnight (default) — near-black slate, bright cyan accent. */
+  :root,
+  [data-theme="midnight"] {
     --bg: 222 18% 6%;
     --bg-elev: 222 16% 10%;
     --fg: 220 15% 95%;
@@ -36,17 +45,78 @@
     --accent: 217 95% 68%;
     --accent-soft: 217 70% 26%;
     --success: 158 64% 48%;
-    color-scheme: dark;
-
-    /* Elevation — deep low-alpha drop shadows + a faint white inset highlight
-       on the top edge for a premium layered feel. */
-    --shadow-card: 0 1px 2px hsl(0 0% 0% / 0.4), 0 6px 16px -6px hsl(0 0% 0% / 0.5),
-      inset 0 1px 0 0 hsl(0 0% 100% / 0.05);
-    --shadow-card-hover: 0 2px 4px hsl(0 0% 0% / 0.45), 0 16px 32px -10px hsl(0 0% 0% / 0.6),
-      inset 0 1px 0 0 hsl(0 0% 100% / 0.08);
-    --shadow-pop: 0 12px 38px -8px hsl(0 0% 0% / 0.65), inset 0 1px 0 0 hsl(0 0% 100% / 0.06);
-    --sheen: hsl(0 0% 100% / 0.06);
     --grid-line: 220 12% 62%;
+    color-scheme: dark;
+  }
+
+  /* Nord — cool polar-night slate, frost-blue accent. */
+  [data-theme="nord"] {
+    --bg: 220 17% 11%;
+    --bg-elev: 220 16% 15%;
+    --fg: 218 27% 92%;
+    --fg-muted: 219 14% 63%;
+    --border: 220 14% 23%;
+    --accent: 193 47% 66%;
+    --accent-soft: 193 32% 28%;
+    --success: 92 28% 65%;
+    --grid-line: 219 14% 63%;
+    color-scheme: dark;
+  }
+
+  /* Mono — graphite, near-zero chroma, soft-white accent (à la Vercel). */
+  [data-theme="mono"] {
+    --bg: 0 0% 7%;
+    --bg-elev: 0 0% 11%;
+    --fg: 0 0% 96%;
+    --fg-muted: 0 0% 58%;
+    --border: 0 0% 19%;
+    --accent: 210 12% 86%;
+    --accent-soft: 0 0% 28%;
+    --success: 150 26% 58%;
+    --grid-line: 0 0% 58%;
+    color-scheme: dark;
+  }
+
+  /* Paper — warm cream, deep-blue accent. */
+  [data-theme="paper"] {
+    --bg: 36 20% 92%;
+    --bg-elev: 36 16% 87%;
+    --fg: 220 25% 12%;
+    --fg-muted: 220 14% 36%;
+    --border: 220 18% 74%;
+    --accent: 222 88% 44%;
+    --accent-soft: 222 80% 88%;
+    --success: 158 50% 36%;
+    --grid-line: 220 14% 36%;
+    color-scheme: light;
+  }
+
+  /* Rosé — soft warm-white, dusty-rose accent. */
+  [data-theme="rose"] {
+    --bg: 18 26% 95%;
+    --bg-elev: 18 24% 91%;
+    --fg: 345 22% 17%;
+    --fg-muted: 345 11% 39%;
+    --border: 16 20% 80%;
+    --accent: 345 66% 50%;
+    --accent-soft: 345 72% 89%;
+    --success: 158 45% 37%;
+    --grid-line: 345 11% 39%;
+    color-scheme: light;
+  }
+
+  /* Solar — warm parchment, amber accent. */
+  [data-theme="solar"] {
+    --bg: 44 38% 92%;
+    --bg-elev: 44 32% 87%;
+    --fg: 28 30% 17%;
+    --fg-muted: 28 16% 37%;
+    --border: 40 24% 75%;
+    --accent: 26 88% 46%;
+    --accent-soft: 28 84% 86%;
+    --success: 92 38% 33%;
+    --grid-line: 28 16% 37%;
+    color-scheme: light;
   }
 
   * {
@@ -149,9 +219,22 @@
   .recharts-cartesian-axis-tick-value {
     fill: hsl(var(--fg-muted));
   }
+  /* Theme-aware grid + axis chrome. These CSS rules win over Recharts' own
+     stroke presentation attributes, so the gridlines/axes pick up each theme's
+     character without resolving var() inside SVG attributes. */
+  .recharts-cartesian-grid line {
+    stroke: hsl(var(--grid-line) / 0.12);
+  }
+  .recharts-cartesian-axis-line,
+  .recharts-cartesian-axis-tick-line {
+    stroke: hsl(var(--grid-line) / 0.2);
+  }
   /* Crosshair cursor line on hover. */
   .recharts-tooltip-cursor {
     transition: opacity 0.15s;
+  }
+  line.recharts-tooltip-cursor {
+    stroke: hsl(var(--grid-line) / 0.45);
   }
   /* Clean donut segment separators that match the card surface (theme-aware;
      a CSS rule so the var() resolves, unlike an inline SVG attribute). */
