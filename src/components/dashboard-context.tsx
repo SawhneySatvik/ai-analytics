@@ -18,6 +18,8 @@ import {
   revalidateAll,
   subscribe,
 } from "@/lib/dataCache";
+import { useSnapshot } from "@/components/snapshot-provider";
+import { resolveLocal } from "@/lib/staticResolve";
 
 export interface ClientFilters {
   from?: number;
@@ -63,6 +65,8 @@ function urlFor(endpoint: string, filters: ClientFilters): string {
 }
 
 export function DashboardProvider({ children }: { children: React.ReactNode }) {
+  const snap = useSnapshot();
+  const isStatic = snap.mode === "static";
   const [filters, setFiltersState] = useState<ClientFilters>(DEFAULT_FILTERS);
   const [meta, setMeta] = useState<MetaResponse | null>(null);
   const [metaError, setMetaError] = useState(false);
@@ -80,12 +84,24 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   useEffect(() => {
+    if (isStatic) {
+      // hosted build: meta comes from the in-browser snapshot (no server)
+      if (snap.snapshot) {
+        try {
+          setMeta(resolveLocal("/api/meta", snap.snapshot) as MetaResponse);
+          setMetaError(false);
+        } catch {
+          setMetaError(true);
+        }
+      }
+      return;
+    }
     void loadMeta();
     // Warm the two shared endpoints so the first navigation is instant. Both
     // dedupe against the pages' own first fetch.
     prefetchUrl("/api/summary");
     prefetchUrl("/api/sessions");
-  }, [loadMeta]);
+  }, [isStatic, snap.snapshot, loadMeta]);
 
   const setFilters = useCallback((patch: Partial<ClientFilters>) => {
     setFiltersState((prev) => ({ ...prev, ...patch }));
@@ -96,16 +112,23 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
   const refresh = useCallback(async () => {
     setRefreshing(true);
     try {
-      const r = await fetch("/api/refresh", { method: "POST", cache: "no-store" });
-      if (r.ok) setMeta((await r.json()) as MetaResponse);
+      if (isStatic) {
+        // re-ingest from the connected folder/demo; the provider rewires the
+        // resolver, re-runs every cached query, and updates the snapshot (which
+        // refreshes meta via the effect above).
+        await snap.refresh();
+      } else {
+        const r = await fetch("/api/refresh", { method: "POST", cache: "no-store" });
+        if (r.ok) setMeta((await r.json()) as MetaResponse);
+        // Server snapshot has been rebuilt — force every cached query to refetch.
+        revalidateAll();
+      }
     } catch {
       /* keep prior meta */
     } finally {
       setRefreshing(false);
-      // Server snapshot has been rebuilt — force every cached query to refetch.
-      revalidateAll();
     }
-  }, []);
+  }, [isStatic, snap]);
 
   const prefetch = useCallback(
     (endpoint: string) => prefetchUrl(urlFor(endpoint, filters)),

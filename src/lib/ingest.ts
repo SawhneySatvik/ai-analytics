@@ -1,4 +1,4 @@
-import { projectDisplayName } from "./paths";
+import { projectDisplayName } from "./projectPath";
 import { finalizeSnapshot } from "./snapshot";
 import type { Snapshot } from "./types";
 import { getEnabledLoaders } from "./sources";

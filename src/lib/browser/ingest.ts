@@ -8,9 +8,15 @@ import {
   ingestSourceFiles,
   walkDirectory,
   type ProgressFn,
+  type SourceFile,
 } from "./loaders";
 
-export type { IngestProgress, ProgressFn } from "./loaders";
+export type { IngestProgress, ProgressFn, SourceFile } from "./loaders";
+
+/** Build a Snapshot from an already-collected list of source files. */
+export function ingestFromSourceFiles(files: SourceFile[], onProgress?: ProgressFn): Promise<Snapshot> {
+  return ingestSourceFiles(files, onProgress);
+}
 
 /** True when the File System Access directory picker is available (Chromium). */
 export function supportsDirectoryPicker(): boolean {
