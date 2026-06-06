@@ -14,12 +14,28 @@ export const RANGES: { label: string; days: number | null }[] = [
 export const SOURCES: (string | null)[] = [null, "claude", "codex", "opencode"];
 export const SCOPES = ["all", "main", "subagent"] as const;
 
-interface Group {
-  label: string;
-  opts: string[];
-  active: number;
-  pick: (i: number) => void;
-}
+const GROUPS = [
+  { label: "Days", opts: RANGES.map((r) => r.label) },
+  { label: "Src", opts: SOURCES.map((s) => s ?? "all") },
+  { label: "Scope", opts: SCOPES.map((s) => s) },
+];
+
+// Chip x-positions on row 1, matching the render: paddingX 1, label "<g> ",
+// chip width = label length (no pill padding), chip marginRight 2, group
+// marginRight 4. Constant since options are constant.
+const SEGS: { x: number; w: number; gi: number; oi: number }[] = (() => {
+  const segs: { x: number; w: number; gi: number; oi: number }[] = [];
+  let x = 1;
+  GROUPS.forEach((g, gi) => {
+    x += g.label.length + 1;
+    g.opts.forEach((o, oi) => {
+      segs.push({ x, w: o.length, gi, oi });
+      x += o.length + 1;
+    });
+    x += 3;
+  });
+  return segs;
+})();
 
 export function FilterBar({
   rangeIdx,
@@ -37,48 +53,29 @@ export function FilterBar({
   onPickScope: (i: number) => void;
 }) {
   const { onClick } = useMouse();
-  const groups: Group[] = [
-    { label: "Days", opts: RANGES.map((r) => r.label), active: rangeIdx, pick: onPickRange },
-    { label: "Src", opts: SOURCES.map((s) => s ?? "all"), active: sourceIdx, pick: onPickSource },
-    { label: "Scope", opts: [...SCOPES], active: scopeIdx, pick: onPickScope },
-  ];
-
-  // Chip x-positions on row 1, matching the render below exactly (paddingX 1,
-  // label "<g> ", each chip width = active ? len+2 : len, chip marginRight 1,
-  // group marginRight 3). Active chips are padded into a pill.
-  const segs: { x: number; w: number; gi: number; oi: number }[] = [];
-  let x = 1;
-  groups.forEach((g, gi) => {
-    x += g.label.length + 1;
-    g.opts.forEach((o, oi) => {
-      const w = oi === g.active ? o.length + 2 : o.length;
-      segs.push({ x, w, gi, oi });
-      x += w + 1;
-    });
-    x += 3;
-  });
+  const active = [rangeIdx, sourceIdx, scopeIdx];
+  const picks = [onPickRange, onPickSource, onPickScope];
 
   useEffect(
     () =>
       onClick((cx, cy) => {
         if (cy !== 1) return;
-        const hit = segs.find((s) => cx >= s.x && cx < s.x + s.w);
-        if (hit) groups[hit.gi].pick(hit.oi);
+        const hit = SEGS.find((s) => cx >= s.x && cx < s.x + s.w);
+        if (hit) picks[hit.gi](hit.oi);
       }),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [onClick, rangeIdx, sourceIdx, scopeIdx, onPickRange, onPickSource, onPickScope],
+    [onClick, onPickRange, onPickSource, onPickScope],
   );
 
   return (
     <Box paddingX={1}>
-      {groups.map((g) => (
+      {GROUPS.map((g, gi) => (
         <Box key={g.label} marginRight={3}>
           <Text color={palette.dim}>{g.label} </Text>
           {g.opts.map((o, oi) => (
             <Box key={o} marginRight={1}>
-              {oi === g.active ? (
-                <Text color={palette.accent} inverse bold>
-                  {` ${o} `}
+              {oi === active[gi] ? (
+                <Text color={palette.accent} bold underline>
+                  {o}
                 </Text>
               ) : (
                 <Text color={palette.muted}>{o}</Text>

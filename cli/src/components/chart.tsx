@@ -2,7 +2,7 @@ import { Box, Text } from "ink";
 
 import { fmtCompact } from "@core/format";
 import { fmtDayLabel } from "@core/chartData";
-import { palette, colorOf, MONO } from "../theme.js";
+import { palette, mutedColorOf } from "../theme.js";
 
 interface Series {
   key: string;
@@ -10,17 +10,17 @@ interface Series {
   color: string;
 }
 
-const SHADES = ["█", "▓", "▒", "░"];
-const Y_GUTTER = 7;
+const Y_GUTTER = 6;
+// Braille dot bit values by (col, row-in-cell). col 0 = left dots, col 1 = right.
+const COL0 = [0x01, 0x02, 0x04, 0x40];
+const COL1 = [0x08, 0x10, 0x20, 0x80];
 
 /**
- * Stacked-area-by-model chart for the terminal. Days are bucketed into wide
- * columns (so the chart fills the width and reads smoothly), heights use a
- * sqrt scale so a single big day doesn't flatten the rest (token volume is
- * very skewed), and each band gets a color + a distinct shade char (legible
- * without color).
+ * Line-per-series chart drawn with braille (2×4 sub-pixels per cell) for a
+ * crisp, high-resolution "pixel" look. Heights use a sqrt scale (token volume
+ * is very skewed) so small days stay visible. Colors are muted per series.
  */
-export function TokenStackChart({
+export function TokenLineChart({
   data,
   series,
   width,
@@ -31,40 +31,25 @@ export function TokenStackChart({
   width: number;
   height: number;
 }) {
-  const H = Math.max(4, height);
-  const avail = Math.max(10, width - Y_GUTTER - 1);
+  const H = Math.max(3, height);
+  const cellsW = Math.max(8, width - Y_GUTTER - 1);
   const n = data.length;
 
+  // Top 3 series by total, one line each (drawn biggest-last so it stays on top).
   const totals = series
     .map((s) => ({ s, total: data.reduce((a, r) => a + (Number(r[s.key]) || 0), 0) }))
+    .filter((t) => t.total > 0)
     .sort((a, b) => b.total - a.total);
-  const top = totals.slice(0, 3).map((t) => t.s);
-  const restKeys = totals.slice(3).map((t) => t.s.key);
-  const bands = top.map((s, i) => ({ key: s.key, name: s.name, color: colorOf(s.color), shade: SHADES[i] }));
-  if (restKeys.length) bands.push({ key: "__other", name: "Other", color: palette.muted, shade: SHADES[Math.min(3, top.length)] });
+  const bands = totals.slice(0, 3).map((t) => ({
+    name: t.s.name,
+    color: mutedColorOf(t.s.color),
+    valueAt: (r: Record<string, unknown>) => Number(r[t.s.key]) || 0,
+  }));
 
-  // Bucket days into wide columns (≥2 cols each) so the chart fills the width.
-  const B = Math.max(1, Math.min(n, Math.floor(avail / 2)));
-  const cellW = Math.max(1, Math.floor(avail / Math.max(1, B)));
-  const buckets: number[][] = Array.from({ length: B }, (_, b) => {
-    const start = Math.floor((b * n) / B);
-    const end = Math.max(start + 1, Math.floor(((b + 1) * n) / B));
-    const vals = bands.map(() => 0);
-    for (let j = start; j < end && j < n; j++) {
-      const r = data[j];
-      bands.forEach((bd, bi) => {
-        vals[bi] +=
-          bd.key === "__other"
-            ? restKeys.reduce((a, k) => a + (Number(r[k]) || 0), 0)
-            : Number(r[bd.key]) || 0;
-      });
-    }
-    return vals;
-  });
-  const bucketTotals = buckets.map((v) => v.reduce((a, x) => a + x, 0));
-  const gmax = Math.max(1, ...bucketTotals);
+  let gmax = 1;
+  for (const r of data) for (const b of bands) gmax = Math.max(gmax, b.valueAt(r));
 
-  if (!n || Math.max(...bucketTotals) <= 0) {
+  if (!n || gmax <= 1) {
     return (
       <Box height={H} alignItems="center" justifyContent="center">
         <Text color={palette.dim}>no data in range</Text>
@@ -72,28 +57,55 @@ export function TokenStackChart({
     );
   }
 
-  const bandAt = (cv: number[], total: number, rowFromBottom: number): number => {
-    if (total <= 0) return -1;
-    const filled = Math.max(1, Math.min(H, Math.round(Math.sqrt(total / gmax) * H)));
-    if (rowFromBottom >= filled) return -1;
-    let acc = 0;
-    for (let bi = 0; bi < cv.length; bi++) {
-      const h = Math.round((cv[bi] / total) * filled);
-      if (rowFromBottom < acc + h) return bi;
-      acc += h;
+  const pxW = cellsW * 2;
+  const pxH = H * 4;
+  const grid = new Uint8Array(cellsW * H);
+  const colors: (string | undefined)[] = new Array(cellsW * H).fill(undefined);
+
+  const setPx = (x: number, y: number, color: string) => {
+    if (x < 0 || x >= pxW || y < 0 || y >= pxH) return;
+    const cell = (y >> 2) * cellsW + (x >> 1);
+    grid[cell] |= (x & 1) === 0 ? COL0[y & 3] : COL1[y & 3];
+    colors[cell] = color;
+  };
+  const drawLine = (x0: number, y0: number, x1: number, y1: number, color: string) => {
+    let dx = Math.abs(x1 - x0);
+    let dy = -Math.abs(y1 - y0);
+    const sx = x0 < x1 ? 1 : -1;
+    const sy = y0 < y1 ? 1 : -1;
+    let err = dx + dy;
+    for (;;) {
+      setPx(x0, y0, color);
+      if (x0 === x1 && y0 === y1) break;
+      const e2 = 2 * err;
+      if (e2 >= dy) { err += dy; x0 += sx; }
+      if (e2 <= dx) { err += dx; y0 += sy; }
     }
-    return cv.length - 1;
   };
 
+  const xAt = (i: number) => (n === 1 ? 0 : Math.round((i / (n - 1)) * (pxW - 1)));
+  const yAt = (v: number) => pxH - 1 - Math.round(Math.sqrt(Math.max(0, v) / gmax) * (pxH - 1));
+
+  // Draw smallest series first so the biggest line wins on overlapping cells.
+  for (let bi = bands.length - 1; bi >= 0; bi--) {
+    const b = bands[bi];
+    let prev: [number, number] | null = null;
+    for (let i = 0; i < n; i++) {
+      const pt: [number, number] = [xAt(i), yAt(b.valueAt(data[i]))];
+      if (prev) drawLine(prev[0], prev[1], pt[0], pt[1], b.color);
+      else setPx(pt[0], pt[1], b.color);
+      prev = pt;
+    }
+  }
+
   const lines = [];
-  for (let r = H - 1; r >= 0; r--) {
-    // sqrt scale: value at height h is (h/H)^2 · gmax, so the mid row is gmax/4
-    const label = r === H - 1 ? fmtCompact(gmax) : r === Math.floor(H / 2) ? fmtCompact(gmax / 4) : r === 0 ? "0" : "";
+  for (let cy = 0; cy < H; cy++) {
+    const label = cy === 0 ? fmtCompact(gmax) : cy === H - 1 ? "0" : "";
     const spans: { text: string; color?: string }[] = [];
-    for (let b = 0; b < B; b++) {
-      const bi = bandAt(buckets[b], bucketTotals[b], r);
-      const ch = (bi < 0 ? " " : MONO ? bands[bi].shade : "█").repeat(cellW);
-      const color = bi < 0 ? undefined : bands[bi].color;
+    for (let cx = 0; cx < cellsW; cx++) {
+      const bits = grid[cy * cellsW + cx];
+      const ch = bits ? String.fromCharCode(0x2800 + bits) : " ";
+      const color = bits ? colors[cy * cellsW + cx] : undefined;
       const last = spans[spans.length - 1];
       if (last && last.color === color) last.text += ch;
       else spans.push({ text: ch, color });
@@ -101,7 +113,6 @@ export function TokenStackChart({
     lines.push({ label, spans });
   }
 
-  const renderW = B * cellW;
   return (
     <Box flexDirection="column">
       {lines.map((ln, i) => (
@@ -120,11 +131,11 @@ export function TokenStackChart({
       ))}
       <Box>
         <Box width={Y_GUTTER + 1} />
-        <Text color={palette.dim}>{"─".repeat(renderW)}</Text>
+        <Text color={palette.dim}>{"─".repeat(cellsW)}</Text>
       </Box>
       <Box>
         <Box width={Y_GUTTER + 1} />
-        <Box width={renderW} justifyContent="space-between">
+        <Box width={cellsW} justifyContent="space-between">
           <Text color={palette.muted}>{fmtDayLabel(String(data[0].date))}</Text>
           <Text color={palette.muted}>{fmtDayLabel(String(data[Math.floor(n / 2)].date))}</Text>
           <Text color={palette.muted}>{fmtDayLabel(String(data[n - 1].date))}</Text>
@@ -133,8 +144,8 @@ export function TokenStackChart({
       <Box marginTop={1}>
         <Box width={Y_GUTTER + 1} />
         {bands.map((b) => (
-          <Box key={b.key} marginRight={2}>
-            <Text color={b.color}>{(MONO ? b.shade : "█") + " "}</Text>
+          <Box key={b.name} marginRight={2}>
+            <Text color={b.color}>─ </Text>
             <Text color={palette.muted}>{b.name}</Text>
           </Box>
         ))}

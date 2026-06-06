@@ -55,6 +55,21 @@ export function colorOf(hslString: string | undefined): string {
   return hslToHex(Number(m[1]), Number(m[2]), Number(m[3]));
 }
 
+/**
+ * Muted variant of a lib HSL color — keeps the hue (so model/tool identity is
+ * still recognizable) but halves saturation and softens lightness, for a calm,
+ * premium look instead of neon. Falls back to the plain conversion.
+ */
+export function mutedColorOf(hslString: string | undefined): string {
+  if (!hslString) return palette.muted;
+  const m = hslString.match(/hsl\(\s*([\d.]+)\s+([\d.]+)%\s+([\d.]+)%/i);
+  if (!m) return colorOf(hslString);
+  const h = Number(m[1]);
+  const s = Math.min(Number(m[2]) * 0.55, 45);
+  const l = Math.max(56, Math.min(68, Number(m[3])));
+  return hslToHex(h, s, l);
+}
+
 /** Linear blend between two hex colors (t = 0..1). Used for the heatmap ramp. */
 export function lerpHex(a: string, b: string, t: number): string {
   const pa = [parseInt(a.slice(1, 3), 16), parseInt(a.slice(3, 5), 16), parseInt(a.slice(5, 7), 16)];

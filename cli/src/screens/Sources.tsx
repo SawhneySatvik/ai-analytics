@@ -6,7 +6,7 @@ import { dailySourceSeries } from "@core/chartData";
 import { fmtCompact, fmtNum, fmtPct, fmtUSD } from "@core/format";
 import { palette, colorOf } from "../theme.js";
 import { SectionTitle, Table, type Cell, type Col } from "../components/ui.js";
-import { TokenStackChart } from "../components/chart.js";
+import { TokenLineChart } from "../components/chart.js";
 
 const cols: Col[] = [
   { label: "Tool", width: 16 },
@@ -31,14 +31,14 @@ export function Sources({ d, width, height }: ScreenProps) {
     { text: fmtPct(tok(s.usage) / total) },
   ]);
   const { data, series } = dailySourceSeries(d.daily, d.sources);
-  const chartH = Math.max(6, height - rows.length - 7);
+  const chartH = Math.max(6, Math.min(10, height - rows.length - 7));
   return (
     <Box flexDirection="column">
       <SectionTitle>CLIs · usage by tool</SectionTitle>
       <Table columns={cols} rows={cells} />
       <Box marginTop={1} flexDirection="column">
-        <SectionTitle>Tokens over time · stacked by tool</SectionTitle>
-        <TokenStackChart data={data} series={series} width={width - 2} height={chartH} />
+        <SectionTitle>Tokens over time · by tool</SectionTitle>
+        <TokenLineChart data={data} series={series} width={width - 2} height={chartH} />
       </Box>
     </Box>
   );

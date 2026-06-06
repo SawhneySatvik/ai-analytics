@@ -6,7 +6,7 @@ import { dailyModelSeries } from "@core/chartData";
 import { fmtCompact, fmtNum, fmtPct, fmtUSD } from "@core/format";
 import { Kpi, SectionTitle } from "../components/ui.js";
 import { BarRow } from "../components/viz.js";
-import { TokenStackChart } from "../components/chart.js";
+import { TokenLineChart } from "../components/chart.js";
 
 export function Overview({ d, width, height }: ScreenProps) {
   const s = d.summary;
@@ -16,7 +16,7 @@ export function Overview({ d, width, height }: ScreenProps) {
   const maxP = projects.length ? tok(projects[0].usage) : 1;
   const maxT = tools.length ? tools[0].count : 1;
 
-  const chartH = Math.max(6, height - 14);
+  const chartH = Math.max(6, Math.min(10, height - 12));
   const colW = Math.max(26, Math.floor((width - 5) / 2));
   const barW = Math.max(8, colW - 30);
 
@@ -31,8 +31,8 @@ export function Overview({ d, width, height }: ScreenProps) {
         <Kpi label="Active days" value={fmtNum(s.activeDays)} />
       </Box>
 
-      <SectionTitle>Tokens over time · stacked by model</SectionTitle>
-      <TokenStackChart data={data} series={series} width={width - 2} height={chartH} />
+      <SectionTitle>Tokens over time · by model</SectionTitle>
+      <TokenLineChart data={data} series={series} width={width - 2} height={chartH} />
 
       <Box marginTop={1}>
         <Box flexDirection="column" width={colW} marginRight={2}>
