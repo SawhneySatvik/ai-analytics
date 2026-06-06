@@ -77,6 +77,16 @@ export function Landing() {
         : os === "linux"
           ? "press Ctrl + H"
           : "enable “show hidden files” in the dialog";
+  // The OS file dialog's "jump to a path" shortcut — by far the easiest way to
+  // reach a hidden dot-folder (it navigates there AND reveals it in one step).
+  const goToKeys =
+    os === "mac"
+      ? "⌘ + Shift + G"
+      : os === "windows"
+        ? "Alt + D"
+        : os === "linux"
+          ? "Ctrl + L"
+          : "the dialog’s path field";
   const claudePath = os === "windows" ? "%USERPROFILE%\\.claude" : "~/.claude";
   const codexPath = os === "windows" ? "%USERPROFILE%\\.codex" : "~/.codex";
 
@@ -141,7 +151,7 @@ export function Landing() {
                       onClick={() => void connectFolder()}
                       className="flex w-full items-center justify-center gap-2 rounded-lg bg-accent px-4 py-2.5 text-sm font-medium text-bg transition-all hover:opacity-90 active:scale-[0.99]"
                     >
-                      <FolderOpen className="h-4 w-4" /> Connect your home folder
+                      <FolderOpen className="h-4 w-4" /> Connect your folder
                     </button>
                   )}
                   <button
@@ -161,9 +171,10 @@ export function Landing() {
                 </div>
                 <p className="mt-3 text-center text-[11px] leading-relaxed text-fg-muted">
                   {canPickDirectory ? (
-                    <>Just pick your home folder — we automatically find the hidden{" "}
-                      <span className="font-mono">.claude</span> &amp;{" "}
-                      <span className="font-mono">.codex</span> inside.</>
+                    <>In the dialog, press <span className="font-mono">{goToKeys}</span> and enter{" "}
+                      <span className="font-mono">{claudePath}</span> to jump straight there — or
+                      pick your home folder and we’ll find <span className="font-mono">.claude</span>{" "}
+                      &amp; <span className="font-mono">.codex</span> inside.</>
                   ) : (
                     <>…or drag &amp; drop your <span className="font-mono">.claude</span> /{" "}
                       <span className="font-mono">.codex</span> folder here</>
@@ -179,16 +190,24 @@ export function Landing() {
                 <div className="mt-2.5 space-y-2.5 text-[11px] leading-relaxed text-fg-muted">
                   <p>
                     <span className="font-mono">.claude</span> and{" "}
-                    <span className="font-mono">.codex</span> are hidden folders, so your file
-                    browser won&apos;t show them by default. Two ways around it:
+                    <span className="font-mono">.codex</span> are hidden folders, so the file
+                    dialog won&apos;t show them by default. Easiest fixes:
                   </p>
                   <p>
-                    <span className="font-medium text-fg">1. Pick your home folder.</span> The picker
-                    opens there — just select it; nothing else on your disk is read.
+                    <span className="font-medium text-fg">1. Jump straight to it.</span> In the
+                    dialog press <span className="font-mono">{goToKeys}</span>, paste a path below,
+                    and open it — this reveals the hidden folder in one step. Picking{" "}
+                    <span className="font-mono">.claude</span> directly works.
                   </p>
                   <p>
-                    <span className="font-medium text-fg">2. Reveal hidden files</span> ({revealHint}),
-                    then open the folder below directly.
+                    <span className="font-medium text-fg">2. Or reveal hidden files</span>{" "}
+                    ({revealHint}), then open the folder directly.
+                  </p>
+                  <p>
+                    <span className="font-medium text-fg">3. Or pick your home folder</span> — nothing
+                    else on your disk is read; we only step into{" "}
+                    <span className="font-mono">.claude</span> /{" "}
+                    <span className="font-mono">.codex</span>.
                   </p>
                   <div className="flex flex-wrap gap-1.5 pt-0.5">
                     {[claudePath, codexPath].map((p) => (
@@ -244,6 +263,7 @@ export function Landing() {
           ref={folderRef}
           type="file"
           multiple
+          aria-label="Upload your .claude or .codex folder"
           className="hidden"
           onChange={(e) => {
             const f = e.target.files;
@@ -255,6 +275,7 @@ export function Landing() {
           type="file"
           multiple
           accept=".jsonl,.json"
+          aria-label="Select .jsonl transcript files"
           className="hidden"
           onChange={(e) => {
             const f = e.target.files;

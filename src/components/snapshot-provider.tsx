@@ -73,7 +73,7 @@ function errMsg(err: unknown, fallback: string): string {
 }
 
 const NO_DATA =
-  "No Claude or Codex usage found there. Pick your home folder (we'll find the hidden .claude / .codex inside it) or select the .claude folder directly.";
+  "No Claude or Codex usage found in that folder. In the picker, use your file dialog's “go to folder” shortcut to jump straight to ~/.claude (or ~/.codex) — or pick your home folder and we'll find the hidden .claude / .codex inside.";
 
 /** Reject empty ingests so we show guidance instead of a blank dashboard. */
 function requireData(snap: Snapshot): Snapshot {
