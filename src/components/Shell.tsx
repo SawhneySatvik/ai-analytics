@@ -67,8 +67,14 @@ function RefreshButton() {
   );
 }
 
+/** Data endpoint each nav route fetches first — used to warm the cache on hover. */
+function endpointFor(href: string): string {
+  return href === "/sessions" ? "/api/sessions" : "/api/summary";
+}
+
 function NavRail() {
   const pathname = usePathname();
+  const { prefetch } = useDashboard();
   return (
     <nav className="flex gap-1 lg:flex-col">
       {NAV.map((item) => {
@@ -79,6 +85,7 @@ function NavRail() {
             key={item.href}
             href={item.href}
             aria-current={active ? "page" : undefined}
+            onMouseEnter={() => prefetch(endpointFor(item.href))}
             className={cn(
               "group relative flex items-center gap-2.5 whitespace-nowrap rounded-lg px-3 py-2 text-sm transition-all duration-200",
               active

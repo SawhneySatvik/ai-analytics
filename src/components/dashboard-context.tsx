@@ -8,8 +8,16 @@ import {
   useMemo,
   useRef,
   useState,
+  useSyncExternalStore,
 } from "react";
 import type { MetaResponse } from "@/lib/dto";
+import {
+  getEntry,
+  prefetch as prefetchUrl,
+  revalidate,
+  revalidateAll,
+  subscribe,
+} from "@/lib/dataCache";
 
 export interface ClientFilters {
   from?: number;
@@ -27,20 +35,37 @@ interface DashboardCtx {
   resetFilters: () => void;
   meta: MetaResponse | null;
   metaError: boolean;
-  version: number;
   refresh: () => Promise<void>;
   refreshing: boolean;
+  /** Warm an endpoint at the current filters (e.g. on nav hover). */
+  prefetch: (endpoint: string) => void;
 }
 
 const Ctx = createContext<DashboardCtx | null>(null);
 
 const DEFAULT_FILTERS: ClientFilters = { scope: "all" };
 
+function buildQuery(filters: ClientFilters): string {
+  const p = new URLSearchParams();
+  if (filters.from != null) p.set("from", String(filters.from));
+  if (filters.to != null) p.set("to", String(filters.to));
+  if (filters.project) p.set("project", filters.project);
+  if (filters.source) p.set("source", filters.source);
+  if (filters.model) p.set("model", filters.model);
+  if (filters.branch) p.set("branch", filters.branch);
+  if (filters.scope && filters.scope !== "all") p.set("scope", filters.scope);
+  return p.toString();
+}
+
+function urlFor(endpoint: string, filters: ClientFilters): string {
+  const qs = buildQuery(filters);
+  return qs ? `${endpoint}?${qs}` : endpoint;
+}
+
 export function DashboardProvider({ children }: { children: React.ReactNode }) {
   const [filters, setFiltersState] = useState<ClientFilters>(DEFAULT_FILTERS);
   const [meta, setMeta] = useState<MetaResponse | null>(null);
   const [metaError, setMetaError] = useState(false);
-  const [version, setVersion] = useState(0);
   const [refreshing, setRefreshing] = useState(false);
 
   const loadMeta = useCallback(async () => {
@@ -56,6 +81,10 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     void loadMeta();
+    // Warm the two shared endpoints so the first navigation is instant. Both
+    // dedupe against the pages' own first fetch.
+    prefetchUrl("/api/summary");
+    prefetchUrl("/api/sessions");
   }, [loadMeta]);
 
   const setFilters = useCallback((patch: Partial<ClientFilters>) => {
@@ -73,13 +102,19 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
       /* keep prior meta */
     } finally {
       setRefreshing(false);
-      setVersion((v) => v + 1); // force all data hooks to refetch
+      // Server snapshot has been rebuilt — force every cached query to refetch.
+      revalidateAll();
     }
   }, []);
 
+  const prefetch = useCallback(
+    (endpoint: string) => prefetchUrl(urlFor(endpoint, filters)),
+    [filters],
+  );
+
   const value = useMemo<DashboardCtx>(
-    () => ({ filters, setFilters, resetFilters, meta, metaError, version, refresh, refreshing }),
-    [filters, setFilters, resetFilters, meta, metaError, version, refresh, refreshing],
+    () => ({ filters, setFilters, resetFilters, meta, metaError, refresh, refreshing, prefetch }),
+    [filters, setFilters, resetFilters, meta, metaError, refresh, refreshing, prefetch],
   );
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
@@ -91,18 +126,6 @@ export function useDashboard(): DashboardCtx {
   return ctx;
 }
 
-function buildQuery(filters: ClientFilters): string {
-  const p = new URLSearchParams();
-  if (filters.from != null) p.set("from", String(filters.from));
-  if (filters.to != null) p.set("to", String(filters.to));
-  if (filters.project) p.set("project", filters.project);
-  if (filters.source) p.set("source", filters.source);
-  if (filters.model) p.set("model", filters.model);
-  if (filters.branch) p.set("branch", filters.branch);
-  if (filters.scope && filters.scope !== "all") p.set("scope", filters.scope);
-  return p.toString();
-}
-
 interface FetchState<T> {
   data: T | null;
   loading: boolean;
@@ -110,45 +133,43 @@ interface FetchState<T> {
 }
 
 /**
- * Fetch a filter-aware endpoint. Refetches whenever the global filters or the
- * refresh `version` change. Keeps prior data visible during refetches.
+ * Fetch a filter-aware endpoint through the shared SWR-lite cache. Paints
+ * cached data instantly on revisit, revalidates in the background, dedupes
+ * concurrent requests, and keeps the previous data visible while a new filter
+ * combination loads.
  */
 export function useDashboardData<T>(
   endpoint: string,
   opts?: { applyFilters?: boolean; extra?: Record<string, string> },
 ): FetchState<T> & { reload: () => void } {
-  const { filters, version } = useDashboard();
+  const { filters } = useDashboard();
   const applyFilters = opts?.applyFilters ?? true;
-  const [state, setState] = useState<FetchState<T>>({ data: null, loading: true, error: null });
-  const dataRef = useRef<T | null>(null);
-  const [manual, setManual] = useState(0);
 
   const query = applyFilters ? buildQuery(filters) : "";
   const extraStr = opts?.extra ? new URLSearchParams(opts.extra).toString() : "";
   const qs = [query, extraStr].filter(Boolean).join("&");
   const url = qs ? `${endpoint}?${qs}` : endpoint;
 
-  useEffect(() => {
-    const ctrl = new AbortController();
-    setState((s) => ({ ...s, loading: true, error: dataRef.current ? null : s.error }));
-    fetch(url, { cache: "no-store", signal: ctrl.signal })
-      .then(async (r) => {
-        const json = await r.json();
-        if (!r.ok) throw new Error(json?.error || String(r.status));
-        dataRef.current = json as T;
-        setState({ data: json as T, loading: false, error: null });
-      })
-      .catch((err: unknown) => {
-        if ((err as { name?: string })?.name === "AbortError") return;
-        setState({
-          data: dataRef.current,
-          loading: false,
-          error: err instanceof Error ? err.message : "request failed",
-        });
-      });
-    return () => ctrl.abort();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [url, version, manual]);
+  const entry = useSyncExternalStore(
+    (cb) => subscribe(url, cb),
+    () => getEntry(url),
+    () => undefined,
+  );
 
-  return { ...state, reload: () => setManual((m) => m + 1) };
+  useEffect(() => {
+    void revalidate(url);
+  }, [url]);
+
+  // Keep the last good data visible while a new URL (e.g. after a filter change)
+  // is still loading, mirroring the prior keep-previous-data behavior.
+  const fresh = (entry?.data as T | undefined) ?? null;
+  const lastData = useRef<T | null>(null);
+  if (fresh !== null) lastData.current = fresh;
+
+  const data = fresh ?? lastData.current;
+  const loading = !entry || (entry.data === undefined && entry.error === undefined);
+  const error = entry?.error ?? null;
+  const reload = useCallback(() => void revalidate(url, true), [url]);
+
+  return { data, loading, error, reload };
 }
