@@ -10,16 +10,14 @@ import {
   Layers,
   LayoutDashboard,
   MessagesSquare,
-  Moon,
   RefreshCw,
-  Sun,
   TriangleAlert,
   Wrench,
 } from "lucide-react";
-import { useEffect, useState } from "react";
 
 import { useDashboard } from "./dashboard-context";
 import { FilterBar } from "./FilterBar";
+import { ThemeMenu } from "./ThemeMenu";
 import { cn } from "@/lib/utils";
 import { relativeTime } from "@/lib/format";
 
@@ -29,7 +27,7 @@ const NAV = [
   { href: "/models", label: "Models", icon: Boxes },
   { href: "/projects", label: "Projects", icon: FolderGit2 },
   { href: "/sessions", label: "Sessions", icon: MessagesSquare },
-  { href: "/tools", label: "Tools", icon: Wrench },
+  { href: "/tools", label: "Tool Calls", icon: Wrench },
   { href: "/activity", label: "Activity", icon: Activity },
   { href: "/cache", label: "Cache", icon: Database },
 ];
@@ -39,31 +37,12 @@ function isActive(pathname: string, href: string): boolean {
   return pathname === href || pathname.startsWith(href + "/");
 }
 
-function ThemeToggle() {
-  const [dark, setDark] = useState(true);
-  useEffect(() => {
-    setDark(document.documentElement.classList.contains("dark"));
-  }, []);
-  const toggle = () => {
-    const d = !dark;
-    setDark(d);
-    document.documentElement.classList.toggle("dark", d);
-    try {
-      localStorage.setItem("ca-theme", d ? "dark" : "light");
-    } catch {
-      /* ignore */
-    }
-  };
-  return (
-    <button
-      type="button"
-      onClick={toggle}
-      aria-label="Toggle theme"
-      className="flex h-8 w-8 items-center justify-center rounded-lg border border-border bg-bg-elev text-fg-muted transition-all hover:border-accent/50 hover:text-fg active:scale-95"
-    >
-      {dark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
-    </button>
-  );
+/** Best-matching nav label for the current path (for the header title). */
+function activeLabel(pathname: string): string {
+  const match = [...NAV]
+    .filter((n) => isActive(pathname, n.href))
+    .sort((a, b) => b.href.length - a.href.length)[0];
+  return match?.label ?? "Overview";
 }
 
 function RefreshButton() {
@@ -103,13 +82,13 @@ function NavRail() {
             className={cn(
               "group relative flex items-center gap-2.5 whitespace-nowrap rounded-lg px-3 py-2 text-sm transition-all duration-200",
               active
-                ? "bg-accent/[0.10] font-medium text-accent ring-1 ring-inset ring-accent/15"
+                ? "bg-gradient-to-r from-accent/[0.14] to-accent/[0.04] font-medium text-accent ring-1 ring-inset ring-accent/20"
                 : "text-fg-muted hover:bg-bg-elev/70 hover:text-fg",
             )}
           >
             {active && (
               <span
-                className="absolute left-0 top-1/2 hidden h-5 w-[3px] -translate-y-1/2 rounded-r-full bg-accent lg:block"
+                className="absolute left-0 top-1/2 hidden h-5 w-[3px] -translate-y-1/2 rounded-r-full bg-accent shadow-[0_0_10px_-1px_hsl(var(--accent)/0.7)] lg:block"
                 aria-hidden
               />
             )}
@@ -169,15 +148,18 @@ export function Shell({ children }: { children: React.ReactNode }) {
       <div className="lg:pl-60">
         {/* top bar + filter bar pin together */}
         <div className="sticky top-0 z-20">
-          <header className="border-b border-border bg-bg/70 backdrop-blur-xl">
+          <header className="relative z-30 border-b border-border bg-bg/70 backdrop-blur-xl after:pointer-events-none after:absolute after:inset-x-0 after:bottom-0 after:h-px after:bg-gradient-to-r after:from-transparent after:via-accent/25 after:to-transparent">
             <div className="flex items-center justify-between gap-4 px-4 py-3 lg:px-6">
               <div className="flex items-center gap-2 lg:hidden">
                 <Activity className="h-4 w-4 text-accent" />
                 <span className="text-sm font-semibold text-fg">CLI Usage</span>
               </div>
+              <h1 className="hidden text-sm font-semibold tracking-tight text-fg lg:block">
+                {activeLabel(pathname)}
+              </h1>
               <div className="ml-auto flex items-center gap-2">
                 <RefreshButton />
-                <ThemeToggle />
+                <ThemeMenu />
               </div>
             </div>
             {/* mobile nav */}

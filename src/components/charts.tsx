@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import {
   Area,
   AreaChart,
@@ -60,6 +61,34 @@ function ChartEmpty({ height }: { height: number }) {
     >
       <div className="h-8 w-8 rounded-full border border-dashed border-border" />
       <span className="text-xs">No data in range</span>
+    </div>
+  );
+}
+
+/**
+ * Stable, responsive box for a Recharts chart. Reserves `height` up front (so
+ * there's no layout shift) and only mounts the ResponsiveContainer after the
+ * parent is laid out — this avoids Recharts' first-paint width=0 flash and keeps
+ * every chart sitting flush inside its card across breakpoints.
+ */
+function ChartFrame({
+  height,
+  className,
+  children,
+}: {
+  height: number;
+  className?: string;
+  children: React.ReactElement;
+}) {
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+  return (
+    <div className={cn("w-full", className)} style={{ height }}>
+      {mounted ? (
+        <ResponsiveContainer width="100%" height="100%">
+          {children}
+        </ResponsiveContainer>
+      ) : null}
     </div>
   );
 }
@@ -146,7 +175,7 @@ export function StackedAreaChart({
 }) {
   if (allZero(data, series.map((s) => s.key))) return <ChartEmpty height={height} />;
   return (
-    <ResponsiveContainer width="100%" height={height}>
+    <ChartFrame height={height}>
       <AreaChart data={data} margin={margin}>
         <defs>
           {series.map((s) => (
@@ -175,7 +204,7 @@ export function StackedAreaChart({
           />
         ))}
       </AreaChart>
-    </ResponsiveContainer>
+    </ChartFrame>
   );
 }
 
@@ -196,7 +225,7 @@ export function MultiLineChart({
 }) {
   if (allZero(data, series.map((s) => s.key))) return <ChartEmpty height={height} />;
   return (
-    <ResponsiveContainer width="100%" height={height}>
+    <ChartFrame height={height}>
       <LineChart data={data} margin={margin}>
         {gridEl()}
         {xAxisEl(xKey, xFormat)}
@@ -216,7 +245,7 @@ export function MultiLineChart({
           />
         ))}
       </LineChart>
-    </ResponsiveContainer>
+    </ChartFrame>
   );
 }
 
@@ -239,7 +268,7 @@ export function SimpleBarChart({
 }) {
   if (allZero(data, bars.map((b) => b.key))) return <ChartEmpty height={height} />;
   return (
-    <ResponsiveContainer width="100%" height={height}>
+    <ChartFrame height={height}>
       <BarChart data={data} margin={margin}>
         {gridEl()}
         {xAxisEl(xKey, xFormat)}
@@ -261,7 +290,7 @@ export function SimpleBarChart({
           />
         ))}
       </BarChart>
-    </ResponsiveContainer>
+    </ChartFrame>
   );
 }
 
@@ -281,7 +310,7 @@ export function DonutChart({
   if (!data.length || data.every((d) => !d.value)) return <ChartEmpty height={height} />;
   return (
     <div className="relative" style={{ height }}>
-      <ResponsiveContainer width="100%" height={height}>
+      <ChartFrame height={height}>
         <PieChart>
           <Pie
             data={data}
@@ -299,7 +328,7 @@ export function DonutChart({
           </Pie>
           <Tooltip content={<TooltipBox fmt={valueFormat} />} />
         </PieChart>
-      </ResponsiveContainer>
+      </ChartFrame>
       {(centerLabel || centerValue) && (
         <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center">
           {centerValue && (
@@ -330,7 +359,7 @@ export function Sparkline({
   const chartData = data.map((v, i) => ({ i, v }));
   const gid = safeId(`spark-${color}`);
   return (
-    <ResponsiveContainer width="100%" height={height}>
+    <ChartFrame height={height}>
       <AreaChart data={chartData} margin={{ top: 2, right: 0, bottom: 0, left: 0 }}>
         <defs>
           <linearGradient id={gid} x1="0" y1="0" x2="0" y2="1">
@@ -347,7 +376,7 @@ export function Sparkline({
           {...ANIM}
         />
       </AreaChart>
-    </ResponsiveContainer>
+    </ChartFrame>
   );
 }
 
