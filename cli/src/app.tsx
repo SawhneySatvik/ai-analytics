@@ -128,18 +128,32 @@ export function App({ initial }: { initial: InitialOptions }) {
       </Box>
     );
   }
+  if (cols < 50 || rows < 14) {
+    return (
+      <Box width={cols} height={rows} alignItems="center" justifyContent="center">
+        <Text color={palette.muted}>terminal too small — widen to ≥ 50×14</Text>
+      </Box>
+    );
+  }
 
-  // Layout rows: 0 = TabBar, 1 = FilterBar, 2 = content paddingTop, 3 = content.
-  const CONTENT_TOP = 3;
-  const contentHeight = Math.max(6, rows - 6);
-  const props: ScreenProps = { d, snap, width: cols, height: contentHeight, contentTop: CONTENT_TOP };
+  // Layout rows (with breathing room): 0 = top pad, 1 = TabBar, 2 = spacer,
+  // 3 = FilterBar, 4 = content paddingTop, 5 = content. (fixed in both modes)
+  const TAB_ROW = 1;
+  const FILTER_ROW = 3;
+  const CONTENT_TOP = 5;
+  const compact = cols < 96; // full header no longer fits on one row
+  const contentHeight = Math.max(6, rows - 7);
+  const props: ScreenProps = { d, snap, width: cols, height: contentHeight, contentTop: CONTENT_TOP, compact };
   const Active = SCREEN_COMPS[screen] ?? Overview;
   const status = refreshing ? "⟳ ingesting…" : `ingested ${relativeTime(snap.builtAt)}`;
-  const hints = "1–8 tabs · ↑↓ ⏎ · d days · s src · c scope · r refresh · ? help · q quit";
+  const hints = compact
+    ? "↑↓ ⏎ · d s c · r · ? · q"
+    : "1–8 tabs · ↑↓ ⏎ · d days · s src · c scope · r refresh · ? help · q quit";
 
   return (
-    <Box flexDirection="column" width={cols} height={rows}>
-      <TabBar active={screen} onPick={setScreen} />
+    <Box flexDirection="column" width={cols} height={rows} paddingTop={1}>
+      <TabBar active={screen} onPick={setScreen} row={TAB_ROW} compact={compact} />
+      <Box height={1} />
       <FilterBar
         rangeIdx={rangeIdx}
         sourceIdx={sourceIdx}
@@ -147,6 +161,8 @@ export function App({ initial }: { initial: InitialOptions }) {
         onPickRange={setRangeIdx}
         onPickSource={setSourceIdx}
         onPickScope={setScopeIdx}
+        row={FILTER_ROW}
+        compact={compact}
       />
       <Box flexGrow={1} flexDirection="column" paddingX={1} paddingTop={1}>
         {help ? <HelpOverlay /> : <Active {...props} />}

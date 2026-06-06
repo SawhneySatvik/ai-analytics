@@ -9,7 +9,7 @@ import { Kpi, SectionTitle, Table, windowStart, type Cell, type Col } from "../c
 import { BarRow, Sparkline } from "../components/viz.js";
 import { useMouse } from "../mouse.js";
 
-export function Sessions({ d, snap, width, height, contentTop }: ScreenProps) {
+export function Sessions({ d, snap, width, height, contentTop, compact }: ScreenProps) {
   const sessions = [...d.sessions].sort((a, b) => b.lastTs - a.lastTs);
   const [sel, setSel] = useState(0);
   const [openId, setOpenId] = useState<string | null>(null);
@@ -122,10 +122,16 @@ export function Sessions({ d, snap, width, height, contentTop }: ScreenProps) {
     { text: fmtCompact(tok(s.usage)) },
     { text: fmtUSD(s.cost), color: palette.accent },
   ]);
+  const keep = compact ? [0, 1, 5] : null; // When, Project, Cost
   return (
     <Box flexDirection="column">
       <SectionTitle>{`Sessions · ${sessions.length} · ↑↓ select, ⏎ open`}</SectionTitle>
-      <Table columns={cols} rows={cells} selected={sel} maxRows={Math.max(5, height - 4)} />
+      <Table
+        columns={keep ? keep.map((i) => cols[i]) : cols}
+        rows={keep ? cells.map((r) => keep.map((i) => r[i])) : cells}
+        selected={sel}
+        maxRows={Math.max(5, height - 4)}
+      />
     </Box>
   );
 }

@@ -78,6 +78,8 @@ export interface ScreenProps {
   height: number;
   /** Absolute terminal row where screen content begins (for mouse hit-testing). */
   contentTop: number;
+  /** Narrow terminal — screens should drop low-priority columns/detail. */
+  compact: boolean;
 }
 
 /** Build (or rebuild, when `force`) the snapshot from the enabled sources. */

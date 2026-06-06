@@ -28,32 +28,53 @@ const TAB_STARTS: number[] = (() => {
   return a;
 })();
 
-export function TabBar({ active, onPick }: { active: number; onPick: (i: number) => void }) {
+export function TabBar({
+  active,
+  onPick,
+  row = 0,
+  compact = false,
+}: {
+  active: number;
+  onPick: (i: number) => void;
+  row?: number;
+  compact?: boolean;
+}) {
   const { onClick, hoverX, hoverY } = useMouse();
+
+  // Segments (text + click x-range). Full: "N Name" each. Compact: numbers with
+  // the active tab expanded inline (positions shift with `active`).
+  const segs: { i: number; start: number; text: string }[] = [];
+  if (compact) {
+    let x = 1 + 8 + 2; // paddingX + "agentmon" + 2 spaces
+    for (let i = 0; i < SCREENS.length; i++) {
+      const text = i === active ? `‹${i + 1} ${SCREENS[i]}›` : `${i + 1}`;
+      segs.push({ i, start: x, text });
+      x += text.length + 1;
+    }
+  } else {
+    for (let i = 0; i < SCREENS.length; i++) segs.push({ i, start: TAB_STARTS[i], text: TAB_LABELS[i] });
+  }
+
   useEffect(
     () =>
       onClick((cx, cy) => {
-        if (cy !== 0) return;
-        for (let i = 0; i < TAB_LABELS.length; i++) {
-          if (cx >= TAB_STARTS[i] && cx < TAB_STARTS[i] + TAB_LABELS[i].length) {
-            onPick(i);
-            return;
-          }
-        }
+        if (cy !== row) return;
+        for (const s of segs) if (cx >= s.start && cx < s.start + s.text.length) return void onPick(s.i);
       }),
-    [onClick, onPick],
+    [onClick, onPick, row, compact, active],
   );
-  const hovered = hoverY === 0 ? TAB_LABELS.findIndex((l, i) => hoverX >= TAB_STARTS[i] && hoverX < TAB_STARTS[i] + l.length) : -1;
+  const hovered = hoverY === row ? segs.find((s) => hoverX >= s.start && hoverX < s.start + s.text.length)?.i ?? -1 : -1;
+
   return (
     <Box paddingX={1}>
       <Text bold color={palette.accent}>
         agentmon
       </Text>
-      <Text color={palette.dim}> · </Text>
-      {SCREENS.map((s, i) => (
-        <Box key={s} marginRight={1}>
-          <Text color={i === active ? palette.accent : palette.muted} bold={i === active} underline={i === active || i === hovered}>
-            {i + 1} {s}
+      <Text color={palette.dim}>{compact ? "  " : " · "}</Text>
+      {segs.map((s) => (
+        <Box key={s.i} marginRight={1}>
+          <Text color={s.i === active ? palette.accent : palette.muted} bold={s.i === active} underline={s.i === active || s.i === hovered}>
+            {s.text}
           </Text>
         </Box>
       ))}
@@ -83,6 +104,7 @@ export function HelpOverlay() {
     ["d", "cycle days (date range)"],
     ["s", "cycle source (CLI tool)"],
     ["c", "cycle scope (all / main / subagent)"],
+    ["g / v", "Overview: cycle chart metric / style"],
     ["m", "toggle heatmap metric (Activity)"],
     ["mouse", "click tabs/chips/rows · wheel scrolls"],
     ["r", "refresh — re-read the data dirs"],

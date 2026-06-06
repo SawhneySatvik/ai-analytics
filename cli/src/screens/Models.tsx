@@ -17,7 +17,7 @@ const columns: Col[] = [
   { label: "Share", width: 6, align: "right" },
 ];
 
-export function Models({ d, height }: ScreenProps) {
+export function Models({ d, height, compact }: ScreenProps) {
   const rows = [...d.models].sort((a, b) => tok(b.usage) - tok(a.usage));
   const total = d.summary.totalTokens || 1;
   const cells: Cell[][] = rows.map((m) => [
@@ -30,10 +30,13 @@ export function Models({ d, height }: ScreenProps) {
     { text: fmtUSD(m.cost), color: palette.accent },
     { text: fmtPct(tok(m.usage) / total) },
   ]);
+  const keep = compact ? [0, 1, 5, 6] : null; // Model, Msgs, Total, Cost
+  const cols = keep ? keep.map((i) => columns[i]) : columns;
+  const rowCells = keep ? cells.map((r) => keep.map((i) => r[i])) : cells;
   return (
     <Box flexDirection="column">
       <SectionTitle>Models · tokens, cost and adoption per model</SectionTitle>
-      <Table columns={columns} rows={cells} maxRows={Math.max(5, height - 4)} />
+      <Table columns={cols} rows={rowCells} maxRows={Math.max(5, height - 4)} />
     </Box>
   );
 }

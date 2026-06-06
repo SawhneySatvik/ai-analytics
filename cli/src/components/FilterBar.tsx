@@ -20,9 +20,8 @@ const GROUPS = [
   { label: "Scope", opts: SCOPES.map((s) => s) },
 ];
 
-// Chip x-positions on row 1, matching the render: paddingX 1, label "<g> ",
-// chip width = label length (no pill padding), chip marginRight 2, group
-// marginRight 4. Constant since options are constant.
+// Full-mode chip x-positions (row matches: paddingX 1, "<g> " label, chip width
+// = label length, chip marginRight 1, group marginRight 3). Constant.
 const SEGS: { x: number; w: number; gi: number; oi: number }[] = (() => {
   const segs: { x: number; w: number; gi: number; oi: number }[] = [];
   let x = 1;
@@ -44,6 +43,8 @@ export function FilterBar({
   onPickRange,
   onPickSource,
   onPickScope,
+  row = 1,
+  compact = false,
 }: {
   rangeIdx: number;
   sourceIdx: number;
@@ -51,20 +52,61 @@ export function FilterBar({
   onPickRange: (i: number) => void;
   onPickSource: (i: number) => void;
   onPickScope: (i: number) => void;
+  row?: number;
+  compact?: boolean;
 }) {
   const { onClick } = useMouse();
   const active = [rangeIdx, sourceIdx, scopeIdx];
   const picks = [onPickRange, onPickSource, onPickScope];
 
+  // Compact: one group of active values; clicking a value cycles that group.
+  const cgroups = [
+    { label: "Days", value: GROUPS[0].opts[rangeIdx], len: RANGES.length, idx: rangeIdx },
+    { label: "Src", value: GROUPS[1].opts[sourceIdx], len: SOURCES.length, idx: sourceIdx },
+    { label: "Scope", value: GROUPS[2].opts[scopeIdx], len: SCOPES.length, idx: scopeIdx },
+  ];
+  const csegs: { x: number; w: number; gi: number }[] = [];
+  if (compact) {
+    let x = 1;
+    cgroups.forEach((g, gi) => {
+      if (gi > 0) x += 3; // " · "
+      x += g.label.length + 1;
+      csegs.push({ x, w: g.value.length, gi });
+      x += g.value.length;
+    });
+  }
+
   useEffect(
     () =>
       onClick((cx, cy) => {
-        if (cy !== 1) return;
-        const hit = SEGS.find((s) => cx >= s.x && cx < s.x + s.w);
-        if (hit) picks[hit.gi](hit.oi);
+        if (cy !== row) return;
+        if (compact) {
+          const hit = csegs.find((s) => cx >= s.x && cx < s.x + s.w);
+          if (hit) picks[hit.gi]((cgroups[hit.gi].idx + 1) % cgroups[hit.gi].len);
+        } else {
+          const hit = SEGS.find((s) => cx >= s.x && cx < s.x + s.w);
+          if (hit) picks[hit.gi](hit.oi);
+        }
       }),
-    [onClick, onPickRange, onPickSource, onPickScope],
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [onClick, row, compact, rangeIdx, sourceIdx, scopeIdx, onPickRange, onPickSource, onPickScope],
   );
+
+  if (compact) {
+    return (
+      <Box paddingX={1}>
+        {cgroups.map((g, i) => (
+          <Box key={g.label}>
+            {i > 0 ? <Text color={palette.dim}> · </Text> : null}
+            <Text color={palette.dim}>{g.label} </Text>
+            <Text color={palette.accent} bold>
+              {g.value}
+            </Text>
+          </Box>
+        ))}
+      </Box>
+    );
+  }
 
   return (
     <Box paddingX={1}>

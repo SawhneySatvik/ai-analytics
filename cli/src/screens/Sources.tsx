@@ -6,7 +6,7 @@ import { dailySourceSeries } from "@core/chartData";
 import { fmtCompact, fmtNum, fmtPct, fmtUSD } from "@core/format";
 import { palette, colorOf } from "../theme.js";
 import { SectionTitle, Table, type Cell, type Col } from "../components/ui.js";
-import { TokenLineChart } from "../components/chart.js";
+import { Chart } from "../components/chart.js";
 
 const cols: Col[] = [
   { label: "Tool", width: 16 },
@@ -18,7 +18,7 @@ const cols: Col[] = [
   { label: "Share", width: 6, align: "right" },
 ];
 
-export function Sources({ d, width, height }: ScreenProps) {
+export function Sources({ d, width, height, compact }: ScreenProps) {
   const total = d.summary.totalTokens || 1;
   const rows = [...d.sources].sort((a, b) => tok(b.usage) - tok(a.usage));
   const cells: Cell[][] = rows.map((s) => [
@@ -32,13 +32,14 @@ export function Sources({ d, width, height }: ScreenProps) {
   ]);
   const { data, series } = dailySourceSeries(d.daily, d.sources);
   const chartH = Math.max(6, Math.min(10, height - rows.length - 7));
+  const keep = compact ? [0, 4, 5] : null; // Tool, Total, Cost
   return (
     <Box flexDirection="column">
       <SectionTitle>CLIs · usage by tool</SectionTitle>
-      <Table columns={cols} rows={cells} />
+      <Table columns={keep ? keep.map((i) => cols[i]) : cols} rows={keep ? cells.map((r) => keep.map((i) => r[i])) : cells} />
       <Box marginTop={1} flexDirection="column">
         <SectionTitle>Tokens over time · by tool</SectionTitle>
-        <TokenLineChart data={data} series={series} width={width - 2} height={chartH} />
+        <Chart data={data} series={series} style="area" width={width - 2} height={chartH} />
       </Box>
     </Box>
   );

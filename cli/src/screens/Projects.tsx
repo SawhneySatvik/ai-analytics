@@ -25,8 +25,10 @@ const sessCols: Col[] = [
   { label: "Cost", width: 8, align: "right" },
 ];
 
-export function Projects({ d, height, contentTop }: ScreenProps) {
+export function Projects({ d, height, contentTop, compact }: ScreenProps) {
   const projects = [...d.projects].sort((a, b) => tok(b.usage) - tok(a.usage));
+  const keepProj = compact ? [0, 4, 5] : null; // Project, Tokens, Cost
+  const keepSess = compact ? [0, 3, 4] : null; // When, Tokens, Cost
   const [sel, setSel] = useState(0);
   const [drill, setDrill] = useState<string | null>(null);
   const { onClick, onWheel } = useMouse();
@@ -77,7 +79,11 @@ export function Projects({ d, height, contentTop }: ScreenProps) {
     return (
       <Box flexDirection="column">
         <SectionTitle>{`${proj?.projectName ?? "Project"} · ${sess.length} sessions   (esc to go back)`}</SectionTitle>
-        <Table columns={sessCols} rows={cells} maxRows={Math.max(5, height - 4)} />
+        <Table
+          columns={keepSess ? keepSess.map((i) => sessCols[i]) : sessCols}
+          rows={keepSess ? cells.map((r) => keepSess.map((i) => r[i])) : cells}
+          maxRows={Math.max(5, height - 4)}
+        />
       </Box>
     );
   }
@@ -94,7 +100,12 @@ export function Projects({ d, height, contentTop }: ScreenProps) {
   return (
     <Box flexDirection="column">
       <SectionTitle>{`Projects · ${projects.length} · ↑↓ select, ⏎ open`}</SectionTitle>
-      <Table columns={projCols} rows={cells} selected={sel} maxRows={Math.max(5, height - 4)} />
+      <Table
+        columns={keepProj ? keepProj.map((i) => projCols[i]) : projCols}
+        rows={keepProj ? cells.map((r) => keepProj.map((i) => r[i])) : cells}
+        selected={sel}
+        maxRows={Math.max(5, height - 4)}
+      />
     </Box>
   );
 }

@@ -5,7 +5,7 @@ import { fmtCompact, fmtPct, fmtUSD } from "@core/format";
 import { palette } from "../theme.js";
 import { Kpi, SectionTitle } from "../components/ui.js";
 import { BarRow } from "../components/viz.js";
-import { TokenLineChart } from "../components/chart.js";
+import { Chart } from "../components/chart.js";
 
 export function Cache({ d, width, height }: ScreenProps) {
   const s = d.summary;
@@ -28,7 +28,7 @@ export function Cache({ d, width, height }: ScreenProps) {
       </Box>
 
       <SectionTitle>Cache read vs write · over time</SectionTitle>
-      <TokenLineChart data={data} series={series} width={width - 2} height={chartH} />
+      <Chart data={data} series={series} style="area" width={width - 2} height={chartH} />
 
       <Box marginTop={1} flexDirection="column">
         <SectionTitle>{`Cost · caching saved you ${fmtUSD(s.cacheSavings)}`}</SectionTitle>
