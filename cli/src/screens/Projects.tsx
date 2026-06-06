@@ -1,11 +1,12 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Box, useInput } from "ink";
 
 import type { ScreenProps } from "../data.js";
 import { tok } from "../data.js";
 import { fmtCompact, fmtDate, fmtNum, fmtUSD } from "@core/format";
 import { palette } from "../theme.js";
-import { SectionTitle, Table, type Cell, type Col } from "../components/ui.js";
+import { SectionTitle, Table, windowStart, type Cell, type Col } from "../components/ui.js";
+import { useMouse } from "../mouse.js";
 
 const projCols: Col[] = [
   { label: "Project", width: 22 },
@@ -24,10 +25,14 @@ const sessCols: Col[] = [
   { label: "Cost", width: 8, align: "right" },
 ];
 
-export function Projects({ d, height }: ScreenProps) {
+export function Projects({ d, height, contentTop }: ScreenProps) {
   const projects = [...d.projects].sort((a, b) => tok(b.usage) - tok(a.usage));
   const [sel, setSel] = useState(0);
   const [drill, setDrill] = useState<string | null>(null);
+  const { onClick, onWheel } = useMouse();
+  const total = projects.length;
+  const maxRows = Math.max(5, height - 4);
+  const rowTop = contentTop + 3; // SectionTitle (1) + its margin (1) + header (1)
 
   useInput((input, key) => {
     if (drill) {
@@ -38,6 +43,26 @@ export function Projects({ d, height }: ScreenProps) {
     else if (key.downArrow || input === "j") setSel((s) => Math.min(projects.length - 1, s + 1));
     else if (key.return && projects[sel]) setDrill(projects[sel].projectPath);
   });
+
+  useEffect(() => {
+    const offClick = onClick((cx, cy) => {
+      if (drill) return;
+      const visible = Math.min(maxRows, total);
+      if (cy < rowTop || cy >= rowTop + visible) return;
+      const idx = windowStart(total, sel, maxRows) + (cy - rowTop);
+      if (idx < 0 || idx >= total) return;
+      if (idx === sel) setDrill(projects[idx].projectPath);
+      else setSel(idx);
+    });
+    const offWheel = onWheel((dir) => {
+      if (drill) return;
+      setSel((s) => Math.max(0, Math.min(total - 1, s + (dir === "down" ? 1 : -1))));
+    });
+    return () => {
+      offClick();
+      offWheel();
+    };
+  }, [onClick, onWheel, sel, drill, total, maxRows, rowTop, projects]);
 
   if (drill) {
     const proj = projects.find((p) => p.projectPath === drill);

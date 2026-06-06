@@ -1,6 +1,8 @@
 import { render } from "ink";
 
-import { App, RANGES, SOURCES, type InitialOptions } from "./app.js";
+import { App, type InitialOptions } from "./app.js";
+import { MouseProvider } from "./mouse.js";
+import { RANGES, SOURCES, SCOPES } from "./components/FilterBar.js";
 import { loadSnapshot, derive, tok, type Filters, type Derived } from "./data.js";
 import type { Snapshot } from "@core/types";
 import { fmtCompact, fmtNum, fmtPct, fmtUSD } from "@core/format";
@@ -50,13 +52,14 @@ export async function main(argv: string[]): Promise<void> {
   const rangeArg = optValue(argv, "--from", "all").toLowerCase();
   const sourceArg = optValue(argv, "--source", "all").toLowerCase();
   const scopeArg = optValue(argv, "--scope", "all").toLowerCase();
-  const scope = (["all", "main", "subagent"].includes(scopeArg) ? scopeArg : "all") as InitialOptions["scope"];
 
   let rangeIdx = RANGES.findIndex((r) => r.label.toLowerCase() === rangeArg);
   if (rangeIdx < 0) rangeIdx = 0;
   let sourceIdx = SOURCES.findIndex((s) => (s ?? "all") === sourceArg);
   if (sourceIdx < 0) sourceIdx = 0;
-  const initial: InitialOptions = { rangeIdx, sourceIdx, scope };
+  let scopeIdx = SCOPES.findIndex((s) => s === scopeArg);
+  if (scopeIdx < 0) scopeIdx = 0;
+  const initial: InitialOptions = { rangeIdx, sourceIdx, scopeIdx };
 
   // Non-interactive paths: --json, or when either stream is not a TTY (piped
   // output, or no interactive stdin — Ink's keyboard handling needs raw mode).
@@ -64,7 +67,7 @@ export async function main(argv: string[]): Promise<void> {
     const filters: Filters = {
       from: RANGES[rangeIdx].days ? Date.now() - RANGES[rangeIdx].days! * 86_400_000 : undefined,
       source: (SOURCES[sourceIdx] ?? undefined) as Filters["source"],
-      scope,
+      scope: SCOPES[scopeIdx],
     };
     const snap = await loadSnapshot(false);
     const d = derive(snap, filters);
@@ -73,7 +76,11 @@ export async function main(argv: string[]): Promise<void> {
     return;
   }
 
-  const app = render(<App initial={initial} />);
+  const app = render(
+    <MouseProvider>
+      <App initial={initial} />
+    </MouseProvider>,
+  );
   await app.waitUntilExit();
 }
 

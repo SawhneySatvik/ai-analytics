@@ -56,6 +56,7 @@ export interface Derived {
   sources: SourceRecord[];
   sessions: SessionRecord[];
   tools: ToolSummary;
+  subagents: SubagentStat[];
   heatmap: { cells: HeatCell[]; hourTotals: number[]; weekdayTotals: number[] };
   /** filtered messages, kept for on-demand session detail */
   messages: MessageRecord[];
@@ -75,6 +76,8 @@ export interface ScreenProps {
   snap: Snapshot;
   width: number;
   height: number;
+  /** Absolute terminal row where screen content begins (for mouse hit-testing). */
+  contentTop: number;
 }
 
 /** Build (or rebuild, when `force`) the snapshot from the enabled sources. */
@@ -97,6 +100,7 @@ export function derive(snap: Snapshot, filters: Filters): Derived {
     sources: sourceBreakdown(messages),
     sessions: sessionList(messages, snap.sessionMeta),
     tools: toolBreakdown(messages),
+    subagents: subagentBreakdown(messages),
     heatmap: hourWeekdayHeatmap(messages),
     messages,
   };

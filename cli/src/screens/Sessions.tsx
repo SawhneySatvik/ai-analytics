@@ -1,17 +1,22 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Box, Text, useInput } from "ink";
 
 import type { ScreenProps } from "../data.js";
 import { tok, sessionDetail } from "../data.js";
 import { fmtCompact, fmtDate, fmtDuration, fmtNum, fmtPct, fmtUSD } from "@core/format";
 import { palette, colorOf } from "../theme.js";
-import { Kpi, SectionTitle, Table, type Cell, type Col } from "../components/ui.js";
+import { Kpi, SectionTitle, Table, windowStart, type Cell, type Col } from "../components/ui.js";
 import { BarRow, Sparkline } from "../components/viz.js";
+import { useMouse } from "../mouse.js";
 
-export function Sessions({ d, snap, width, height }: ScreenProps) {
+export function Sessions({ d, snap, width, height, contentTop }: ScreenProps) {
   const sessions = [...d.sessions].sort((a, b) => b.lastTs - a.lastTs);
   const [sel, setSel] = useState(0);
   const [openId, setOpenId] = useState<string | null>(null);
+  const { onClick, onWheel } = useMouse();
+  const total = sessions.length;
+  const maxRows = Math.max(5, height - 4);
+  const rowTop = contentTop + 3; // SectionTitle (1) + its margin (1) + header (1)
 
   useInput((input, key) => {
     if (openId) {
@@ -22,6 +27,26 @@ export function Sessions({ d, snap, width, height }: ScreenProps) {
     else if (key.downArrow || input === "j") setSel((s) => Math.min(sessions.length - 1, s + 1));
     else if (key.return && sessions[sel]) setOpenId(sessions[sel].sessionId);
   });
+
+  useEffect(() => {
+    const offClick = onClick((cx, cy) => {
+      if (openId) return;
+      const visible = Math.min(maxRows, total);
+      if (cy < rowTop || cy >= rowTop + visible) return;
+      const idx = windowStart(total, sel, maxRows) + (cy - rowTop);
+      if (idx < 0 || idx >= total) return;
+      if (idx === sel) setOpenId(sessions[idx].sessionId);
+      else setSel(idx);
+    });
+    const offWheel = onWheel((dir) => {
+      if (openId) return;
+      setSel((s) => Math.max(0, Math.min(total - 1, s + (dir === "down" ? 1 : -1))));
+    });
+    return () => {
+      offClick();
+      offWheel();
+    };
+  }, [onClick, onWheel, sel, openId, total, maxRows, rowTop, sessions]);
 
   if (openId) {
     const detail = sessionDetail(snap, openId);

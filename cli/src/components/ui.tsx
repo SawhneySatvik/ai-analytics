@@ -49,6 +49,12 @@ export function SectionTitle({ children }: { children: string }) {
   );
 }
 
+/** First visible row index for a scrolling window centered on `selected`. */
+export function windowStart(total: number, selected: number, maxRows?: number): number {
+  if (maxRows == null || total <= maxRows) return 0;
+  return Math.max(0, Math.min(Math.max(0, selected - Math.floor(maxRows / 2)), total - maxRows));
+}
+
 export interface Col {
   label: string;
   width: number;
@@ -78,11 +84,7 @@ export function Table({
 }) {
   const total = rows.length;
   const windowed = maxRows != null && total > maxRows;
-  let start = 0;
-  if (windowed) {
-    start = Math.min(Math.max(0, selected - Math.floor(maxRows / 2)), total - maxRows);
-    if (start < 0) start = 0;
-  }
+  const start = windowStart(total, selected, maxRows);
   const end = windowed ? start + maxRows! : total;
   const visible = rows.slice(start, end);
 

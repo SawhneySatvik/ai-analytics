@@ -3,6 +3,9 @@
 // just supply hex and let the terminal degrade. The shared lib expresses colors
 // as HSL strings (e.g. "hsl(217 91% 60%)"), so we convert those to hex here.
 
+/** Monochrome mode — distinguish series by shade char rather than color. */
+export const MONO = Boolean(process.env.NO_COLOR);
+
 export const palette = {
   accent: "#609bfb", // hsl(217 95% 68%)
   fg: "#eef0f3",
