@@ -78,7 +78,12 @@ function StaticSnapshotProvider({ children }: { children: React.ReactNode }) {
   const [progress, setProgress] = useState<IngestProgress | null>(null);
   const [source, setSource] = useState<DataSource>(null);
   const [snapshot, setSnapshot] = useState<Snapshot | null>(null);
+  // Resolved after mount so the prerendered shell (always false on the server)
+  // and the first client render agree — avoids a hydration mismatch.
+  const [canPick, setCanPick] = useState(false);
   const handleRef = useRef<FileSystemDirectoryHandle | null>(null);
+
+  useEffect(() => setCanPick(supportsDirectoryPicker()), []);
 
   const onProgress = useCallback((p: IngestProgress) => setProgress(p), []);
 
@@ -225,7 +230,7 @@ function StaticSnapshotProvider({ children }: { children: React.ReactNode }) {
       progress,
       source,
       snapshot,
-      canPickDirectory: supportsDirectoryPicker(),
+      canPickDirectory: canPick,
       connectFolder,
       uploadFiles,
       dropSourceFiles,
@@ -233,7 +238,7 @@ function StaticSnapshotProvider({ children }: { children: React.ReactNode }) {
       refresh,
       disconnect,
     }),
-    [status, error, progress, source, snapshot, connectFolder, uploadFiles, dropSourceFiles, loadDemo, refresh, disconnect],
+    [status, error, progress, source, snapshot, canPick, connectFolder, uploadFiles, dropSourceFiles, loadDemo, refresh, disconnect],
   );
 
   return (
