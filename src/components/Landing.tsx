@@ -222,6 +222,11 @@ export function Landing() {
                       </button>
                     ))}
                   </div>
+                  <p className="pt-0.5 text-fg-muted/80">
+                    Each pick connects one folder — connected one tool but not the other? Use{" "}
+                    <span className="font-medium text-fg">“add folder”</span> in the header to merge
+                    more in.
+                  </p>
                 </div>
               </details>
 

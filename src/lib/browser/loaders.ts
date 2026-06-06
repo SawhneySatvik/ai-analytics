@@ -145,6 +145,11 @@ export async function ingestSourceFiles(files: SourceFile[], onProgress?: Progre
   const looseJsonl: SourceFile[] = [];
 
   const relPaths = files.map((f) => f.relPath);
+  // Codex keys messages by rollout filename and doesn't dedup, so the same file
+  // reached via two connected folders (e.g. home AND ~/.codex) would double-count.
+  // Rollout names are globally unique (timestamp + uuid), so a basename collision
+  // is definitively the same session — drop the repeat.
+  const seenRollout = new Set<string>();
 
   for (const sf of files) {
     const { relPath } = sf;
@@ -160,7 +165,10 @@ export async function ingestSourceFiles(files: SourceFile[], onProgress?: Progre
     } else if (pIdx >= 0 && relPath.endsWith(".jsonl")) {
       claudeTranscripts.push({ sf, relToProjects: relPath.split("/").slice(pIdx + 1).join("/") });
     } else if (sIdx >= 0 && name.startsWith("rollout-") && name.endsWith(".jsonl")) {
-      codexRollouts.push(sf);
+      if (!seenRollout.has(name)) {
+        seenRollout.add(name);
+        codexRollouts.push(sf);
+      }
     } else if (relPath.endsWith(".jsonl")) {
       looseJsonl.push(sf);
     }

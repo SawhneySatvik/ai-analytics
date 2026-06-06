@@ -41,6 +41,28 @@ export async function loadHandle(key: string): Promise<FileSystemDirectoryHandle
   }
 }
 
+/** Persist a set of granted handles (for connecting multiple folders). */
+export async function saveHandles(key: string, handles: FileSystemDirectoryHandle[]): Promise<void> {
+  try {
+    await tx("readwrite", (s) => s.put(handles, key));
+  } catch {
+    /* private-mode / unsupported — non-fatal */
+  }
+}
+
+/** Load persisted handles. Tolerates a legacy single-handle value written by an
+ *  earlier build (wraps it in an array). */
+export async function loadHandles(key: string): Promise<FileSystemDirectoryHandle[]> {
+  try {
+    const v = await tx<unknown>("readonly", (s) => s.get(key));
+    if (Array.isArray(v)) return v as FileSystemDirectoryHandle[];
+    if (v) return [v as FileSystemDirectoryHandle];
+    return [];
+  } catch {
+    return [];
+  }
+}
+
 export async function clearHandles(): Promise<void> {
   try {
     await tx("readwrite", (s) => s.clear());

@@ -8,6 +8,7 @@ import {
   Boxes,
   Database,
   FolderGit2,
+  FolderPlus,
   Layers,
   LayoutDashboard,
   MessagesSquare,
@@ -73,23 +74,43 @@ function RefreshButton() {
   );
 }
 
-/** Hosted-build only: shows the active data source with a "change" action. */
+/** Hosted-build only: shows the active data source with "add folder" + "change". */
 function DataSourceControl() {
   const snap = useSnapshot();
   if (snap.mode !== "static") return null;
   const label =
-    snap.source === "demo" ? "demo data" : snap.source === "upload" ? "uploaded files" : "local folder";
+    snap.source === "demo"
+      ? "demo data"
+      : snap.source === "upload"
+        ? "uploaded files"
+        : snap.folderCount > 1
+          ? `${snap.folderCount} folders`
+          : "local folder";
+  const canAdd = snap.source === "folder" && snap.canPickDirectory;
   return (
-    <button
-      type="button"
-      onClick={() => void snap.disconnect()}
-      title="Switch data source"
-      className="hidden h-8 items-center gap-1.5 rounded-lg border border-border bg-bg-elev px-2.5 text-xs text-fg-muted transition-all hover:border-accent/50 hover:text-fg active:scale-95 sm:flex"
-    >
-      <Database className="h-3.5 w-3.5 text-accent" />
-      <span>{label}</span>
-      <span className="text-fg-muted/60">· change</span>
-    </button>
+    <div className="hidden items-center gap-1.5 sm:flex">
+      {canAdd && (
+        <button
+          type="button"
+          onClick={() => void snap.addFolder()}
+          title="Connect another folder and merge it in"
+          className="flex h-8 items-center gap-1.5 rounded-lg border border-border bg-bg-elev px-2.5 text-xs text-fg-muted transition-all hover:border-accent/50 hover:text-fg active:scale-95"
+        >
+          <FolderPlus className="h-3.5 w-3.5 text-accent" />
+          <span>add folder</span>
+        </button>
+      )}
+      <button
+        type="button"
+        onClick={() => void snap.disconnect()}
+        title="Switch data source"
+        className="flex h-8 items-center gap-1.5 rounded-lg border border-border bg-bg-elev px-2.5 text-xs text-fg-muted transition-all hover:border-accent/50 hover:text-fg active:scale-95"
+      >
+        <Database className="h-3.5 w-3.5 text-accent" />
+        <span>{label}</span>
+        <span className="text-fg-muted/60">· change</span>
+      </button>
+    </div>
   );
 }
 

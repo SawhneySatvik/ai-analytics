@@ -13,7 +13,7 @@ import {
 import type { Snapshot } from "@/lib/types";
 import {
   ingestFromFiles,
-  ingestFromHandle,
+  ingestFromHandles,
   ingestFromSourceFiles,
   loadDemoSnapshot,
   pickDirectory,
@@ -21,7 +21,7 @@ import {
   type IngestProgress,
   type SourceFile,
 } from "@/lib/browser/ingest";
-import { clearHandles, ensureReadPermission, loadHandle, saveHandle } from "@/lib/browser/idb";
+import { clearHandles, ensureReadPermission, loadHandles, saveHandles } from "@/lib/browser/idb";
 import { revalidateAll, setLocalResolver } from "@/lib/dataCache";
 import { resolveLocal } from "@/lib/staticResolve";
 import { Landing } from "@/components/Landing";
@@ -40,7 +40,11 @@ export interface SnapshotCtx {
   source: DataSource;
   snapshot: Snapshot | null;
   canPickDirectory: boolean;
+  /** Number of connected local folders (0 unless source === "folder"). */
+  folderCount: number;
   connectFolder: () => Promise<void>;
+  /** Connect an additional folder and merge it with the current data. */
+  addFolder: () => Promise<void>;
   uploadFiles: (files: File[] | FileList) => Promise<void>;
   dropSourceFiles: (files: SourceFile[]) => Promise<void>;
   loadDemo: () => Promise<void>;
@@ -60,7 +64,9 @@ const SSR_STUB: SnapshotCtx = {
   source: null,
   snapshot: null,
   canPickDirectory: false,
+  folderCount: 0,
   connectFolder: async () => {},
+  addFolder: async () => {},
   uploadFiles: async () => {},
   dropSourceFiles: async () => {},
   loadDemo: async () => {},
@@ -90,11 +96,18 @@ function StaticSnapshotProvider({ children }: { children: React.ReactNode }) {
   // Resolved after mount so the prerendered shell (always false on the server)
   // and the first client render agree — avoids a hydration mismatch.
   const [canPick, setCanPick] = useState(false);
-  const handleRef = useRef<FileSystemDirectoryHandle | null>(null);
+  const [folderCount, setFolderCount] = useState(0);
+  // All connected folder handles (the picker grants one per call; we merge them).
+  const handlesRef = useRef<FileSystemDirectoryHandle[]>([]);
 
   useEffect(() => setCanPick(supportsDirectoryPicker()), []);
 
   const onProgress = useCallback((p: IngestProgress) => setProgress(p), []);
+
+  const setHandles = useCallback((hs: FileSystemDirectoryHandle[]) => {
+    handlesRef.current = hs;
+    setFolderCount(hs.length);
+  }, []);
 
   // Install a snapshot: wire the local resolver SYNCHRONOUSLY (before children
   // mount and run their revalidate effects) so cached queries resolve on-device.
@@ -108,30 +121,45 @@ function StaticSnapshotProvider({ children }: { children: React.ReactNode }) {
     setStatus("ready");
   }, []);
 
-  const connectFolder = useCallback(async () => {
-    let handle: FileSystemDirectoryHandle;
-    try {
-      handle = await pickDirectory();
-    } catch (err) {
-      // user dismissed the picker — stay where we were
-      if ((err as DOMException)?.name === "AbortError") return;
-      setError(errMsg(err, "Couldn't open the folder picker."));
-      setStatus("error");
-      return;
-    }
-    try {
-      setStatus("ingesting");
-      setProgress(null);
-      if (!(await ensureReadPermission(handle))) throw new Error("Read permission was denied.");
-      const snap = requireData(await ingestFromHandle(handle, onProgress));
-      handleRef.current = handle;
-      await saveHandle(HANDLE_KEY, handle);
-      install(snap, "folder");
-    } catch (err) {
-      setError(errMsg(err, "Couldn't read that folder."));
-      setStatus("error");
-    }
-  }, [install, onProgress]);
+  // Pick a folder and ingest. `mode: "replace"` starts a fresh connection;
+  // `mode: "add"` merges the new folder with the already-connected ones.
+  const pickAndIngest = useCallback(
+    async (mode: "replace" | "add") => {
+      let handle: FileSystemDirectoryHandle;
+      try {
+        handle = await pickDirectory();
+      } catch (err) {
+        // user dismissed the picker — stay where we were
+        if ((err as DOMException)?.name === "AbortError") return;
+        setError(errMsg(err, "Couldn't open the folder picker."));
+        setStatus("error");
+        return;
+      }
+      // ignore re-picking a folder that's already connected
+      if (mode === "add") {
+        for (const h of handlesRef.current) {
+          if (await h.isSameEntry?.(handle)) return;
+        }
+      }
+      try {
+        setStatus("ingesting");
+        setProgress(null);
+        if (!(await ensureReadPermission(handle))) throw new Error("Read permission was denied.");
+        const next = mode === "add" ? [...handlesRef.current, handle] : [handle];
+        const snap = requireData(await ingestFromHandles(next, onProgress));
+        setHandles(next);
+        await saveHandles(HANDLE_KEY, next);
+        install(snap, "folder");
+      } catch (err) {
+        setError(errMsg(err, "Couldn't read that folder."));
+        setStatus("error");
+      }
+    },
+    [install, onProgress, setHandles],
+  );
+
+  const connectFolder = useCallback(() => pickAndIngest("replace"), [pickAndIngest]);
+  const addFolder = useCallback(() => pickAndIngest("add"), [pickAndIngest]);
 
   const uploadFiles = useCallback(
     async (files: File[] | FileList) => {
@@ -139,14 +167,14 @@ function StaticSnapshotProvider({ children }: { children: React.ReactNode }) {
         setStatus("ingesting");
         setProgress(null);
         const snap = requireData(await ingestFromFiles(files, onProgress));
-        handleRef.current = null;
+        setHandles([]);
         install(snap, "upload");
       } catch (err) {
         setError(errMsg(err, "Couldn't read those files."));
         setStatus("error");
       }
     },
-    [install, onProgress],
+    [install, onProgress, setHandles],
   );
 
   const dropSourceFiles = useCallback(
@@ -155,14 +183,14 @@ function StaticSnapshotProvider({ children }: { children: React.ReactNode }) {
         setStatus("ingesting");
         setProgress(null);
         const snap = requireData(await ingestFromSourceFiles(files, onProgress));
-        handleRef.current = null;
+        setHandles([]);
         install(snap, "upload");
       } catch (err) {
         setError(errMsg(err, "Couldn't read those files."));
         setStatus("error");
       }
     },
-    [install, onProgress],
+    [install, onProgress, setHandles],
   );
 
   const loadDemo = useCallback(async () => {
@@ -170,20 +198,22 @@ function StaticSnapshotProvider({ children }: { children: React.ReactNode }) {
       setStatus("ingesting");
       setProgress(null);
       const snap = await loadDemoSnapshot();
-      handleRef.current = null;
+      setHandles([]);
       install(snap, "demo");
     } catch (err) {
       setError(errMsg(err, "Couldn't load the demo data."));
       setStatus("error");
     }
-  }, [install]);
+  }, [install, setHandles]);
 
   const refresh = useCallback(async () => {
     try {
-      if (source === "folder" && handleRef.current) {
+      if (source === "folder" && handlesRef.current.length) {
         setStatus("ingesting");
-        if (!(await ensureReadPermission(handleRef.current))) throw new Error("Read permission was denied.");
-        install(requireData(await ingestFromHandle(handleRef.current, onProgress)), "folder");
+        for (const h of handlesRef.current) {
+          if (!(await ensureReadPermission(h))) throw new Error("Read permission was denied.");
+        }
+        install(requireData(await ingestFromHandles(handlesRef.current, onProgress)), "folder");
       } else if (source === "demo") {
         install(await loadDemoSnapshot(), "demo");
       }
@@ -196,31 +226,36 @@ function StaticSnapshotProvider({ children }: { children: React.ReactNode }) {
 
   const disconnect = useCallback(async () => {
     await clearHandles();
-    handleRef.current = null;
+    setHandles([]);
     setLocalResolver(null);
     setSnapshot(null);
     setSource(null);
     setError(null);
     setProgress(null);
     setStatus("idle");
-  }, []);
+  }, [setHandles]);
 
-  // restore a previously granted folder handle on mount
+  // restore previously granted folder handles on mount
   useEffect(() => {
     let cancelled = false;
     void (async () => {
-      const handle = await loadHandle(HANDLE_KEY);
-      if (!handle || cancelled) return;
+      const handles = await loadHandles(HANDLE_KEY);
+      if (!handles.length || cancelled) return;
       try {
         setStatus("restoring");
-        if (!(await ensureReadPermission(handle))) {
+        const ok: FileSystemDirectoryHandle[] = [];
+        for (const h of handles) {
+          if (await ensureReadPermission(h)) ok.push(h);
+        }
+        if (!ok.length) {
           if (!cancelled) setStatus("idle");
           return;
         }
         setStatus("ingesting");
-        const snap = requireData(await ingestFromHandle(handle, onProgress));
+        const snap = requireData(await ingestFromHandles(ok, onProgress));
         if (cancelled) return;
-        handleRef.current = handle;
+        setHandles(ok);
+        if (ok.length !== handles.length) await saveHandles(HANDLE_KEY, ok); // prune revoked
         install(snap, "folder");
       } catch {
         if (!cancelled) setStatus("idle");
@@ -229,7 +264,7 @@ function StaticSnapshotProvider({ children }: { children: React.ReactNode }) {
     return () => {
       cancelled = true;
     };
-  }, [install, onProgress]);
+  }, [install, onProgress, setHandles]);
 
   const value = useMemo<SnapshotCtx>(
     () => ({
@@ -240,14 +275,16 @@ function StaticSnapshotProvider({ children }: { children: React.ReactNode }) {
       source,
       snapshot,
       canPickDirectory: canPick,
+      folderCount,
       connectFolder,
+      addFolder,
       uploadFiles,
       dropSourceFiles,
       loadDemo,
       refresh,
       disconnect,
     }),
-    [status, error, progress, source, snapshot, canPick, connectFolder, uploadFiles, dropSourceFiles, loadDemo, refresh, disconnect],
+    [status, error, progress, source, snapshot, canPick, folderCount, connectFolder, addFolder, uploadFiles, dropSourceFiles, loadDemo, refresh, disconnect],
   );
 
   return (

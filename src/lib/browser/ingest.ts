@@ -29,6 +29,19 @@ export async function ingestFromHandle(handle: FileSystemDirectoryHandle, onProg
   return ingestSourceFiles(files, onProgress);
 }
 
+/**
+ * Build a Snapshot from several granted directory handles, merged into one.
+ * The picker only grants one folder per call, so "connect multiple folders" is
+ * just: walk each handle, concatenate the files, and ingest once. (Claude dedups
+ * by message uuid and Codex rollouts dedup by filename, so overlapping folders
+ * won't double-count.)
+ */
+export async function ingestFromHandles(handles: FileSystemDirectoryHandle[], onProgress?: ProgressFn): Promise<Snapshot> {
+  const files: SourceFile[] = [];
+  for (const handle of handles) await walkDirectory(handle, onProgress, "", files);
+  return ingestSourceFiles(files, onProgress);
+}
+
 /** Build a Snapshot from uploaded files (drag-drop or <input webkitdirectory>). */
 export async function ingestFromFiles(files: File[] | FileList, onProgress?: ProgressFn): Promise<Snapshot> {
   return ingestSourceFiles(filesToSourceFiles(files), onProgress);
