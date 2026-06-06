@@ -11,6 +11,7 @@ import {
   LayoutDashboard,
   MessagesSquare,
   RefreshCw,
+  Share2,
   TriangleAlert,
   Wrench,
 } from "lucide-react";
@@ -30,6 +31,7 @@ const NAV = [
   { href: "/tools", label: "Tool Calls", icon: Wrench },
   { href: "/activity", label: "Activity", icon: Activity },
   { href: "/cache", label: "Cache", icon: Database },
+  { href: "/share", label: "Share", icon: Share2 },
 ];
 
 function isActive(pathname: string, href: string): boolean {
