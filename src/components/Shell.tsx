@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 
 import { useDashboard } from "./dashboard-context";
+import { useSnapshot } from "./snapshot-provider";
 import { FilterBar } from "./FilterBar";
 import { ThemeMenu } from "./ThemeMenu";
 import { cn } from "@/lib/utils";
@@ -66,6 +67,26 @@ function RefreshButton() {
         {refreshing ? "reading…" : "refresh"}
       </button>
     </div>
+  );
+}
+
+/** Hosted-build only: shows the active data source with a "change" action. */
+function DataSourceControl() {
+  const snap = useSnapshot();
+  if (snap.mode !== "static") return null;
+  const label =
+    snap.source === "demo" ? "demo data" : snap.source === "upload" ? "uploaded files" : "local folder";
+  return (
+    <button
+      type="button"
+      onClick={() => void snap.disconnect()}
+      title="Switch data source"
+      className="hidden h-8 items-center gap-1.5 rounded-lg border border-border bg-bg-elev px-2.5 text-xs text-fg-muted transition-all hover:border-accent/50 hover:text-fg active:scale-95 sm:flex"
+    >
+      <Database className="h-3.5 w-3.5 text-accent" />
+      <span>{label}</span>
+      <span className="text-fg-muted/60">· change</span>
+    </button>
   );
 }
 
@@ -167,6 +188,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
                 {activeLabel(pathname)}
               </h1>
               <div className="ml-auto flex items-center gap-2">
+                <DataSourceControl />
                 <RefreshButton />
                 <ThemeMenu />
               </div>

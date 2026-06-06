@@ -1,14 +1,18 @@
 "use client";
 
+import { Suspense } from "react";
+import { useSearchParams } from "next/navigation";
+
 import { useDashboardData } from "@/components/dashboard-context";
 import { PageHeader } from "@/components/PageHeader";
 import { Card, ErrorNote, PageSkeleton, PanelTitle, Stat } from "@/components/ui";
 import { SessionsTable } from "@/components/SessionsTable";
+import { SessionDetail } from "@/components/SessionDetail";
 import type { SessionsResponse } from "@/lib/dto";
 import { totalTokens } from "@/lib/usage";
 import { fmtCompact, fmtNum, fmtUSD } from "@/lib/format";
 
-export default function SessionsPage() {
+function SessionsList() {
   const { data, error } = useDashboardData<SessionsResponse>("/api/sessions");
   if (error && !data) return <ErrorNote message={`Couldn't load data — ${error}`} />;
   if (!data) return <PageSkeleton kpis={4} />;
@@ -49,5 +53,18 @@ export default function SessionsPage() {
         <SessionsTable sessions={sessions} />
       </Card>
     </div>
+  );
+}
+
+function SessionsRouter() {
+  const id = useSearchParams().get("id");
+  return id ? <SessionDetail id={id} /> : <SessionsList />;
+}
+
+export default function SessionsPage() {
+  return (
+    <Suspense fallback={<PageSkeleton kpis={4} />}>
+      <SessionsRouter />
+    </Suspense>
   );
 }

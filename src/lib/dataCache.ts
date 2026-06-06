@@ -17,6 +17,14 @@ export interface CacheEntry<T = unknown> {
 const store = new Map<string, CacheEntry>();
 const listeners = new Map<string, Set<() => void>>();
 
+// In the hosted static build there is no server; the in-browser SnapshotProvider
+// installs a resolver that answers the same endpoint URLs from the on-device
+// Snapshot. When set, revalidate() uses it instead of fetch().
+let localResolver: ((url: string) => Promise<unknown>) | null = null;
+export function setLocalResolver(fn: ((url: string) => Promise<unknown>) | null): void {
+  localResolver = fn;
+}
+
 // On mount/navigation we revalidate at most this often per key; a manual refresh
 // bypasses it. Data only changes on refresh or on-disk edits, so a generous
 // window avoids redundant fetches (and any flicker) on rapid back-navigation.
@@ -58,9 +66,14 @@ export function revalidate(url: string, force = false): Promise<void> | void {
 
   const run = (async () => {
     try {
-      const r = await fetch(url, { cache: "no-store" });
-      const json = await r.json();
-      if (!r.ok) throw new Error(json?.error || String(r.status));
+      let json: unknown;
+      if (localResolver) {
+        json = await localResolver(url);
+      } else {
+        const r = await fetch(url, { cache: "no-store" });
+        json = await r.json();
+        if (!r.ok) throw new Error((json as { error?: string })?.error || String(r.status));
+      }
       store.set(url, { data: json, updatedAt: Date.now() });
     } catch (err) {
       const prev = store.get(url);

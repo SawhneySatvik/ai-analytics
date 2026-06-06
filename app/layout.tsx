@@ -4,6 +4,7 @@ import { GeistMono } from "geist/font/mono";
 
 import "./globals.css";
 import { DashboardProvider } from "@/components/dashboard-context";
+import { SnapshotProvider } from "@/components/snapshot-provider";
 import { Shell } from "@/components/Shell";
 
 export const metadata: Metadata = {
@@ -22,9 +23,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <script dangerouslySetInnerHTML={{ __html: themeScript }} />
       </head>
       <body>
-        <DashboardProvider>
-          <Shell>{children}</Shell>
-        </DashboardProvider>
+        <SnapshotProvider>
+          <DashboardProvider>
+            <Shell>{children}</Shell>
+          </DashboardProvider>
+        </SnapshotProvider>
       </body>
     </html>
   );

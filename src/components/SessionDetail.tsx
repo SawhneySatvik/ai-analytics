@@ -1,7 +1,6 @@
 "use client";
 
 import Link from "next/link";
-import { useParams } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 
 import { useDashboardData } from "@/components/dashboard-context";
@@ -12,9 +11,7 @@ import { cacheHitRate, totalTokens } from "@/lib/usage";
 import { fmtCompact, fmtDateTime, fmtDuration, fmtNum, fmtPct, fmtUSD } from "@/lib/format";
 import { sourceLabel } from "@/lib/models";
 
-export default function SessionDetailPage() {
-  const params = useParams();
-  const id = Array.isArray(params.id) ? params.id[0] : params.id;
+export function SessionDetail({ id }: { id: string }) {
   const { data, error } = useDashboardData<SessionDetailResponse>("/api/sessions", {
     applyFilters: false,
     extra: id ? { id } : undefined,

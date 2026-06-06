@@ -1,4 +1,4 @@
-import { projectDisplayName } from "./paths";
+import { projectDisplayName } from "./projectPath";
 import {
   MODEL_ORDER,
   SOURCE_ORDER,
