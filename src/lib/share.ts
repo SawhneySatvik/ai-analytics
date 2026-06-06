@@ -34,7 +34,7 @@ export const TEMPLATES: { id: ShareTemplate; label: string; blurb: string }[] = 
  *  CLI's `Derived`, so both build identical ShareStats. */
 export type ShareInput = Pick<
   SummaryResponse,
-  "summary" | "models" | "sources" | "projects" | "tools" | "daily" | "heatmap"
+  "summary" | "models" | "sources" | "projects" | "tools" | "daily" | "heatmap" | "subagents"
 >;
 
 export const RATIOS: Record<ShareRatio, { w: number; h: number; label: string; sub: string }> = {
@@ -74,10 +74,16 @@ export interface ShareStats {
   sources: ShareSlice[];
   topProject?: { name: string; tokens: number };
   topTool?: { name: string; count: number };
+  tools: { name: string; count: number }[]; // top few, for a "tools" block
+  subagentMessages: number;
+  topAgent?: { type: string; count: number };
+  webSearch: number;
+  webFetch: number;
   peakHour: number | null;
   peakDay: string | null;
   weekendPct: number; // 0..1 of weekday+weekend activity that lands on Sat/Sun
   weekdayPct: number;
+  hourTotals: number[]; // 24-length, for a "when you code" by-hour mini-bar
   busiestDay?: { label: string; tokens: number };
   spark: number[];
   heatmap: HeatmapData; // for the Rhythm card (hour×weekday grid + marginals)
@@ -91,8 +97,9 @@ function argmax(arr: number[]): number | null {
 }
 
 export function deriveShareStats(data: ShareInput, opts?: { redact?: boolean }): ShareStats {
-  const { summary, models, sources, projects, tools, daily, heatmap } = data;
+  const { summary, models, sources, projects, tools, daily, heatmap, subagents } = data;
   const total = summary.totalTokens || 1;
+  const topAgent = subagents[0];
 
   const modelSlices: ShareSlice[] = models
     .map((m) => ({ label: m.label, color: m.color, tokens: tok(m.usage), pct: tok(m.usage) / total, cost: m.cost }))
@@ -142,10 +149,16 @@ export function deriveShareStats(data: ShareInput, opts?: { redact?: boolean }):
     sources: sourceSlices,
     topProject: topProj && !opts?.redact ? { name: topProj.projectName, tokens: tok(topProj.usage) } : undefined,
     topTool: tools.tools[0] ? { name: tools.tools[0].name, count: tools.tools[0].count } : undefined,
+    tools: tools.tools.slice(0, 4).map((t) => ({ name: t.name, count: t.count })),
+    subagentMessages: summary.subagentMessageCount,
+    topAgent: topAgent ? { type: topAgent.agentType, count: topAgent.messageCount } : undefined,
+    webSearch: summary.webSearch,
+    webFetch: summary.webFetch,
     peakHour: argmax(heatmap.hourTotals),
     peakDay: peakDayIdx != null ? WEEKDAYS[peakDayIdx] : null,
     weekendPct: weekend / wTotal,
     weekdayPct: weekday / wTotal,
+    hourTotals: heatmap.hourTotals,
     busiestDay: busiest && busiest.tokens > 0
       ? { label: fmtDate(busiest.label), tokens: busiest.tokens }
       : undefined,

@@ -41,7 +41,12 @@ type DatabaseSyncCtor = new (path: string, opts?: { readOnly?: boolean }) => Sql
 
 async function openReadOnly(file: string): Promise<SqliteDB | null> {
   try {
-    const mod = (await import("node:sqlite")) as unknown as { DatabaseSync: DatabaseSyncCtor };
+    // Built from parts (not a literal) so esbuild — used to bundle the CLI — can't
+    // statically strip the `node:` prefix into a broken `import("sqlite")`. The
+    // webpackIgnore comment keeps Next/webpack from trying to bundle it either; at
+    // runtime both just import the real `node:sqlite` builtin.
+    const spec = ["node", "sqlite"].join(":");
+    const mod = (await import(/* webpackIgnore: true */ spec)) as unknown as { DatabaseSync: DatabaseSyncCtor };
     return new mod.DatabaseSync(file, { readOnly: true });
   } catch {
     return null; // experimental module unavailable / open failed → no-op

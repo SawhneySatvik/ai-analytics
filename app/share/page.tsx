@@ -30,12 +30,24 @@ export default function SharePage() {
   const [theme, setTheme] = useState<string>("midnight");
   const [handle, setHandle] = useState("");
   const [redact, setRedact] = useState(false);
-  const [busy, setBusy] = useState<null | "download" | "copy">(null);
+  const [busy, setBusy] = useState<null | "download" | "copy" | "share">(null);
   const [copied, setCopied] = useState(false);
+  const [canShareFiles, setCanShareFiles] = useState(false);
+  const [exportErr, setExportErr] = useState<string | null>(null);
 
   const cardRef = useRef<HTMLDivElement>(null);
   const previewRef = useRef<HTMLDivElement>(null);
   const [pw, setPw] = useState(0);
+
+  // Detect Web Share API file support post-mount (avoids a hydration mismatch).
+  useEffect(() => {
+    try {
+      const probe = new File([new Blob()], "card.png", { type: "image/png" });
+      setCanShareFiles(typeof navigator.canShare === "function" && navigator.canShare({ files: [probe] }));
+    } catch {
+      setCanShareFiles(false);
+    }
+  }, []);
 
   // Default the card theme to whatever the app is currently showing.
   useEffect(() => {
@@ -57,38 +69,76 @@ export default function SharePage() {
   if (!data) return <PageSkeleton kpis={4} />;
 
   const stats = deriveShareStats(data, { redact });
+  const persona = derivePersona(stats);
   const { w, h } = RATIOS[ratio];
   const scale = pw ? Math.min(pw / w, MAX_PREVIEW_H / h, 1) : 0.4;
 
-  async function withCard(action: "download" | "copy") {
+  const fileName = `cli-usage-${template}-${ratio}.png`;
+  const captionText = `apparently I'm a ${persona.title} ${persona.emoji} — ${fmtCompact(stats.totalTokens)} tokens across ${stats.days} active days, all on-device with CLI Usage Analytics →`;
+
+  /** Render the off-screen card to a PNG File (2× for retina). */
+  async function capture(): Promise<File> {
     const node = cardRef.current;
-    if (!node) return;
+    if (!node) throw new Error("card not ready");
+    const { domToPng } = await import("modern-screenshot");
+    const dataUrl = await domToPng(node, { scale: 2 });
+    const blob = await (await fetch(dataUrl)).blob();
+    return new File([blob], fileName, { type: "image/png" });
+  }
+
+  async function withCard(action: "download" | "copy") {
     setBusy(action);
+    setExportErr(null);
     try {
-      const { domToPng } = await import("modern-screenshot");
-      const dataUrl = await domToPng(node, { scale: 2 });
+      const file = await capture();
       if (action === "download") {
+        const url = URL.createObjectURL(file);
         const a = document.createElement("a");
-        a.href = dataUrl;
-        a.download = `cli-usage-${template}-${ratio}.png`;
+        a.href = url;
+        a.download = fileName;
         a.click();
+        URL.revokeObjectURL(url);
       } else {
-        const blob = await (await fetch(dataUrl)).blob();
-        await navigator.clipboard.write([new ClipboardItem({ "image/png": blob })]);
+        await navigator.clipboard.write([new ClipboardItem({ "image/png": file })]);
         setCopied(true);
         setTimeout(() => setCopied(false), 2000);
       }
     } catch {
-      /* surfaced via the button returning to idle */
+      setExportErr("Couldn't render the image. Try Download, or a Chromium browser.");
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  /** Post the card image directly via the native share sheet (Web Share API). */
+  async function shareImage() {
+    setBusy("share");
+    setExportErr(null);
+    try {
+      const file = await capture();
+      if (navigator.canShare?.({ files: [file] })) {
+        await navigator.share({ files: [file], text: captionText, title: "CLI Usage Analytics" });
+      } else {
+        // capability changed / unavailable — fall back to a download
+        const url = URL.createObjectURL(file);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = fileName;
+        a.click();
+        URL.revokeObjectURL(url);
+      }
+    } catch (e) {
+      // user-cancelled share is an AbortError — not an error to surface
+      if ((e as DOMException)?.name !== "AbortError") {
+        setExportErr("Couldn't open the share sheet. Try Download instead.");
+      }
     } finally {
       setBusy(null);
     }
   }
 
   function postToX() {
-    const persona = derivePersona(stats);
-    const text = `apparently I'm a ${persona.title} ${persona.emoji} — ${fmtCompact(stats.totalTokens)} tokens across ${stats.days} active days, all on-device with CLI Usage Analytics →`;
-    window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}`, "_blank", "noopener");
+    window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(captionText)}`, "_blank", "noopener");
   }
 
   return (
@@ -101,6 +151,14 @@ export default function SharePage() {
       <div className="grid gap-5 lg:grid-cols-[340px_1fr]">
         {/* ── controls ─────────────────────────────────────────────── */}
         <Card className="space-y-6 p-5">
+          <div className="flex items-center gap-2.5 rounded-xl border border-accent/30 bg-accent/[0.06] px-3 py-2.5">
+            <span className="text-xl leading-none">{persona.emoji}</span>
+            <div className="min-w-0">
+              <div className="font-mono text-[10px] uppercase tracking-[0.16em] text-fg-muted">your persona</div>
+              <div className="truncate text-sm font-semibold text-fg">{persona.title}</div>
+            </div>
+          </div>
+
           <div>
             <PanelTitle title="Template" />
             <div className="grid grid-cols-2 gap-2">
@@ -204,15 +262,36 @@ export default function SharePage() {
           </div>
 
           <div className="space-y-2 border-t border-border pt-4">
-            <button
-              type="button"
-              onClick={() => withCard("download")}
-              disabled={busy !== null}
-              className="flex h-10 w-full items-center justify-center gap-2 rounded-lg bg-accent text-sm font-medium text-bg transition-all hover:opacity-90 active:scale-[0.98] disabled:opacity-60"
-            >
-              <Download className="h-4 w-4" /> {busy === "download" ? "Rendering…" : "Download PNG"}
-            </button>
-            <div className="grid grid-cols-2 gap-2">
+            {canShareFiles ? (
+              <button
+                type="button"
+                onClick={shareImage}
+                disabled={busy !== null}
+                className="flex h-10 w-full items-center justify-center gap-2 rounded-lg bg-accent text-sm font-medium text-bg transition-all hover:opacity-90 active:scale-[0.98] disabled:opacity-60"
+              >
+                <Share2 className="h-4 w-4" /> {busy === "share" ? "Opening…" : "Share image"}
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={() => withCard("download")}
+                disabled={busy !== null}
+                className="flex h-10 w-full items-center justify-center gap-2 rounded-lg bg-accent text-sm font-medium text-bg transition-all hover:opacity-90 active:scale-[0.98] disabled:opacity-60"
+              >
+                <Download className="h-4 w-4" /> {busy === "download" ? "Rendering…" : "Download PNG"}
+              </button>
+            )}
+            <div className={cn("grid gap-2", canShareFiles ? "grid-cols-3" : "grid-cols-2")}>
+              {canShareFiles && (
+                <button
+                  type="button"
+                  onClick={() => withCard("download")}
+                  disabled={busy !== null}
+                  className="flex h-9 items-center justify-center gap-2 rounded-lg border border-border bg-bg/40 text-sm text-fg transition-all hover:border-accent/50 active:scale-[0.98] disabled:opacity-60"
+                >
+                  <Download className="h-4 w-4" /> {busy === "download" ? "…" : "Save"}
+                </button>
+              )}
               <button
                 type="button"
                 onClick={() => withCard("copy")}
@@ -227,27 +306,36 @@ export default function SharePage() {
                 onClick={postToX}
                 className="flex h-9 items-center justify-center gap-2 rounded-lg border border-border bg-bg/40 text-sm text-fg transition-all hover:border-accent/50 active:scale-[0.98]"
               >
-                <Share2 className="h-4 w-4" /> Post on X
+                <Share2 className="h-4 w-4" /> X
               </button>
             </div>
-            <p className="text-[11px] leading-relaxed text-fg-muted">
-              Copy puts the image on your clipboard; “Post on X” opens a draft — paste or attach the image there.
-            </p>
+            {exportErr ? (
+              <p className="text-[11px] leading-relaxed text-amber-500">{exportErr}</p>
+            ) : (
+              <p className="text-[11px] leading-relaxed text-fg-muted">
+                {canShareFiles
+                  ? "“Share image” attaches the card to your device’s share sheet — post it straight to X, nothing uploaded by us."
+                  : "Copy puts the image on your clipboard; “X” opens a draft to paste it into."}
+              </p>
+            )}
           </div>
         </Card>
 
         {/* ── preview ──────────────────────────────────────────────── */}
         <Card className="flex flex-col p-5">
           <PanelTitle title="Preview" hint={`${w}×${h} · exported at 2×`} />
-          <div ref={previewRef} className="flex flex-1 items-start justify-center">
+          <div ref={previewRef} className="flex flex-1 flex-col items-center justify-start">
             <div style={{ width: w * scale, height: h * scale }} className="relative">
               <div
-                className="absolute left-0 top-0 overflow-hidden rounded-2xl shadow-pop"
+                className="absolute left-0 top-0 overflow-hidden rounded-2xl shadow-pop ring-1 ring-border"
                 style={{ transform: `scale(${scale})`, transformOrigin: "top left" }}
               >
                 <ShareCard stats={stats} template={template} theme={theme} ratio={ratio} handle={handle.trim() || undefined} />
               </div>
             </div>
+            <p className="mt-4 text-center text-[11px] text-fg-muted">
+              apparently you&apos;re a <span className="font-medium text-fg">{persona.title}</span> {persona.emoji} · rendered &amp; exported on-device
+            </p>
           </div>
         </Card>
       </div>
