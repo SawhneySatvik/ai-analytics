@@ -69,6 +69,55 @@ export function ShareBar({ pct, color, height = 10 }: { pct: number; color: stri
   );
 }
 
+export interface MiniBarItem {
+  label: string;
+  value: number;
+  max?: number;
+  valueText?: string;
+  color?: string;
+}
+
+/** A compact labeled-bar list (e.g. weekday/weekend, top tools, by-hour). */
+export function MiniBars({
+  items,
+  labelWidth,
+  valueWidth,
+  fontSize,
+  barHeight = 8,
+  color = "hsl(var(--accent))",
+}: {
+  items: MiniBarItem[];
+  labelWidth: number;
+  valueWidth: number;
+  fontSize: number;
+  barHeight?: number;
+  color?: string;
+}) {
+  const fallbackMax = Math.max(1, ...items.map((i) => i.value));
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: barHeight * 0.7 }}>
+      {items.map((it) => (
+        <div key={it.label} style={{ display: "flex", alignItems: "center", gap: fontSize }}>
+          <span
+            style={{ width: labelWidth, fontSize }}
+            className="shrink-0 truncate font-mono uppercase tracking-[0.1em] text-fg-muted"
+          >
+            {it.label}
+          </span>
+          <div style={{ flex: 1 }}>
+            <ShareBar pct={it.value / (it.max ?? fallbackMax)} color={it.color ?? color} height={barHeight} />
+          </div>
+          {it.valueText != null && (
+            <span style={{ width: valueWidth, fontSize }} className="shrink-0 text-right font-medium text-fg tabular">
+              {it.valueText}
+            </span>
+          )}
+        </div>
+      ))}
+    </div>
+  );
+}
+
 /** hour × weekday activity grid (Sun→Sat rows, 0→23h cols), accent-shaded. */
 export function HeatGrid({ cells, width, gap = 3 }: { cells: HeatCell[]; width: number; gap?: number }) {
   const grid: number[][] = Array.from({ length: 7 }, () => new Array(24).fill(0));

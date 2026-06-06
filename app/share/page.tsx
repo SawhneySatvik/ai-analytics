@@ -57,6 +57,7 @@ export default function SharePage() {
   if (!data) return <PageSkeleton kpis={4} />;
 
   const stats = deriveShareStats(data, { redact });
+  const persona = derivePersona(stats);
   const { w, h } = RATIOS[ratio];
   const scale = pw ? Math.min(pw / w, MAX_PREVIEW_H / h, 1) : 0.4;
 
@@ -101,6 +102,14 @@ export default function SharePage() {
       <div className="grid gap-5 lg:grid-cols-[340px_1fr]">
         {/* ── controls ─────────────────────────────────────────────── */}
         <Card className="space-y-6 p-5">
+          <div className="flex items-center gap-2.5 rounded-xl border border-accent/30 bg-accent/[0.06] px-3 py-2.5">
+            <span className="text-xl leading-none">{persona.emoji}</span>
+            <div className="min-w-0">
+              <div className="font-mono text-[10px] uppercase tracking-[0.16em] text-fg-muted">your persona</div>
+              <div className="truncate text-sm font-semibold text-fg">{persona.title}</div>
+            </div>
+          </div>
+
           <div>
             <PanelTitle title="Template" />
             <div className="grid grid-cols-2 gap-2">
@@ -239,15 +248,18 @@ export default function SharePage() {
         {/* ── preview ──────────────────────────────────────────────── */}
         <Card className="flex flex-col p-5">
           <PanelTitle title="Preview" hint={`${w}×${h} · exported at 2×`} />
-          <div ref={previewRef} className="flex flex-1 items-start justify-center">
+          <div ref={previewRef} className="flex flex-1 flex-col items-center justify-start">
             <div style={{ width: w * scale, height: h * scale }} className="relative">
               <div
-                className="absolute left-0 top-0 overflow-hidden rounded-2xl shadow-pop"
+                className="absolute left-0 top-0 overflow-hidden rounded-2xl shadow-pop ring-1 ring-border"
                 style={{ transform: `scale(${scale})`, transformOrigin: "top left" }}
               >
                 <ShareCard stats={stats} template={template} theme={theme} ratio={ratio} handle={handle.trim() || undefined} />
               </div>
             </div>
+            <p className="mt-4 text-center text-[11px] text-fg-muted">
+              apparently you&apos;re a <span className="font-medium text-fg">{persona.title}</span> {persona.emoji} · rendered &amp; exported on-device
+            </p>
           </div>
         </Card>
       </div>
