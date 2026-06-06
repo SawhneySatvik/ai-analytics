@@ -6,6 +6,19 @@ import type { SourceFile } from "./loaders";
 
 const isData = (name: string) => name.endsWith(".jsonl") || name.endsWith(".meta.json");
 
+// Don't descend into notoriously huge / irrelevant trees if someone drops a
+// large parent folder by mistake.
+const SKIP_DIRS = new Set([
+  "node_modules",
+  ".git",
+  "Library",
+  ".cache",
+  ".Trash",
+  ".npm",
+  ".nvm",
+  "Applications",
+]);
+
 async function walk(entry: FileSystemEntry, path: string, out: SourceFile[]): Promise<void> {
   if (entry.isFile) {
     if (!isData(entry.name)) return;
@@ -16,6 +29,7 @@ async function walk(entry: FileSystemEntry, path: string, out: SourceFile[]): Pr
     });
     return;
   }
+  if (SKIP_DIRS.has(entry.name)) return;
   const reader = (entry as FileSystemDirectoryEntry).createReader();
   // readEntries returns the directory in batches; call until it returns empty.
   for (;;) {

@@ -4,6 +4,8 @@ import { useEffect, useRef, useState } from "react";
 import {
   Activity,
   AlertTriangle,
+  Check,
+  Copy,
   FolderOpen,
   Loader2,
   Play,
@@ -41,9 +43,13 @@ function ProgressView() {
   );
 }
 
+type OS = "mac" | "windows" | "linux" | "other";
+
 export function Landing() {
   const { status, error, canPickDirectory, connectFolder, uploadFiles, dropSourceFiles, loadDemo } = useSnapshot();
   const [dragging, setDragging] = useState(false);
+  const [os, setOs] = useState<OS>("other");
+  const [copied, setCopied] = useState<string | null>(null);
   const folderRef = useRef<HTMLInputElement>(null);
   const filesRef = useRef<HTMLInputElement>(null);
 
@@ -55,6 +61,33 @@ export function Landing() {
       el.setAttribute("directory", "");
     }
   }, []);
+
+  // Resolved after mount so the prerendered shell and first client render agree.
+  useEffect(() => {
+    const ua = navigator.userAgent;
+    setOs(/Mac/i.test(ua) ? "mac" : /Win/i.test(ua) ? "windows" : /Linux|X11/i.test(ua) ? "linux" : "other");
+  }, []);
+
+  const revealHint =
+    os === "mac"
+      ? "press ⌘ + Shift + . (period)"
+      : os === "windows"
+        ? "turn on View ▸ Show ▸ Hidden items"
+        : os === "linux"
+          ? "press Ctrl + H"
+          : "enable “show hidden files” in the dialog";
+  const claudePath = os === "windows" ? "%USERPROFILE%\\.claude" : "~/.claude";
+  const codexPath = os === "windows" ? "%USERPROFILE%\\.codex" : "~/.codex";
+
+  async function copy(text: string) {
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopied(text);
+      setTimeout(() => setCopied(null), 1500);
+    } catch {
+      /* clipboard blocked — ignore */
+    }
+  }
 
   const busy = status === "ingesting" || status === "restoring";
 
@@ -107,7 +140,7 @@ export function Landing() {
                       onClick={() => void connectFolder()}
                       className="flex w-full items-center justify-center gap-2 rounded-lg bg-accent px-4 py-2.5 text-sm font-medium text-bg transition-all hover:opacity-90 active:scale-[0.99]"
                     >
-                      <FolderOpen className="h-4 w-4" /> Connect data folder
+                      <FolderOpen className="h-4 w-4" /> Connect your home folder
                     </button>
                   )}
                   <button
@@ -115,7 +148,7 @@ export function Landing() {
                     onClick={() => folderRef.current?.click()}
                     className="flex w-full items-center justify-center gap-2 rounded-lg border border-border bg-bg px-4 py-2.5 text-sm font-medium text-fg transition-all hover:border-accent/50 active:scale-[0.99]"
                   >
-                    <Upload className="h-4 w-4" /> {canPickDirectory ? "Upload a folder instead" : "Choose your data folder"}
+                    <Upload className="h-4 w-4" /> {canPickDirectory ? "Upload a folder instead" : "Choose a folder to scan"}
                   </button>
                   <button
                     type="button"
@@ -125,11 +158,52 @@ export function Landing() {
                     <Upload className="h-4 w-4" /> Select .jsonl files
                   </button>
                 </div>
-                <p className="mt-3 text-center text-[11px] text-fg-muted">
-                  …or drag &amp; drop your <span className="font-mono">.claude</span> /{" "}
-                  <span className="font-mono">.codex</span> folder here
+                <p className="mt-3 text-center text-[11px] leading-relaxed text-fg-muted">
+                  {canPickDirectory ? (
+                    <>Just pick your home folder — we automatically find the hidden{" "}
+                      <span className="font-mono">.claude</span> &amp;{" "}
+                      <span className="font-mono">.codex</span> inside.</>
+                  ) : (
+                    <>…or drag &amp; drop your <span className="font-mono">.claude</span> /{" "}
+                      <span className="font-mono">.codex</span> folder here</>
+                  )}
                 </p>
               </div>
+
+              <details className="group mt-3 rounded-lg border border-border/70 bg-bg/40 px-3.5 py-2.5 text-left">
+                <summary className="flex cursor-pointer list-none items-center justify-between text-[12px] font-medium text-fg-muted transition-colors hover:text-fg">
+                  Can&apos;t find your folder?
+                  <span className="text-fg-muted/60 transition-transform group-open:rotate-180">⌄</span>
+                </summary>
+                <div className="mt-2.5 space-y-2.5 text-[11px] leading-relaxed text-fg-muted">
+                  <p>
+                    <span className="font-mono">.claude</span> and{" "}
+                    <span className="font-mono">.codex</span> are hidden folders, so your file
+                    browser won&apos;t show them by default. Two ways around it:
+                  </p>
+                  <p>
+                    <span className="font-medium text-fg">1. Pick your home folder.</span> The picker
+                    opens there — just select it; nothing else on your disk is read.
+                  </p>
+                  <p>
+                    <span className="font-medium text-fg">2. Reveal hidden files</span> ({revealHint}),
+                    then open the folder below directly.
+                  </p>
+                  <div className="flex flex-wrap gap-1.5 pt-0.5">
+                    {[claudePath, codexPath].map((p) => (
+                      <button
+                        key={p}
+                        type="button"
+                        onClick={() => void copy(p)}
+                        className="inline-flex items-center gap-1.5 rounded-md border border-border bg-bg-elev px-2 py-1 font-mono text-[10px] text-fg transition-colors hover:border-accent/50"
+                      >
+                        {copied === p ? <Check className="h-3 w-3 text-emerald-500" /> : <Copy className="h-3 w-3" />}
+                        {p}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </details>
 
               <div className="mt-4 flex items-center justify-center">
                 <button
@@ -149,8 +223,8 @@ export function Landing() {
 
               {!canPickDirectory && (
                 <p className="mt-4 text-center text-[11px] text-fg-muted/70">
-                  Tip: one-click folder connect works in Chrome/Edge. In other browsers, use
-                  upload or drag &amp; drop.
+                  Tip: one-click connect works in Chrome/Edge. Here, {revealHint} so your{" "}
+                  <span className="font-mono">.claude</span> folder is visible, then upload it.
                 </p>
               )}
             </>

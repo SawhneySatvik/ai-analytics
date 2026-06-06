@@ -72,6 +72,15 @@ function errMsg(err: unknown, fallback: string): string {
   return err instanceof Error ? err.message : fallback;
 }
 
+const NO_DATA =
+  "No Claude or Codex usage found there. Pick your home folder (we'll find the hidden .claude / .codex inside it) or select the .claude folder directly.";
+
+/** Reject empty ingests so we show guidance instead of a blank dashboard. */
+function requireData(snap: Snapshot): Snapshot {
+  if (snap.messages.length === 0) throw new Error(NO_DATA);
+  return snap;
+}
+
 function StaticSnapshotProvider({ children }: { children: React.ReactNode }) {
   const [status, setStatus] = useState<SnapshotStatus>("idle");
   const [error, setError] = useState<string | null>(null);
@@ -114,7 +123,7 @@ function StaticSnapshotProvider({ children }: { children: React.ReactNode }) {
       setStatus("ingesting");
       setProgress(null);
       if (!(await ensureReadPermission(handle))) throw new Error("Read permission was denied.");
-      const snap = await ingestFromHandle(handle, onProgress);
+      const snap = requireData(await ingestFromHandle(handle, onProgress));
       handleRef.current = handle;
       await saveHandle(HANDLE_KEY, handle);
       install(snap, "folder");
@@ -129,7 +138,7 @@ function StaticSnapshotProvider({ children }: { children: React.ReactNode }) {
       try {
         setStatus("ingesting");
         setProgress(null);
-        const snap = await ingestFromFiles(files, onProgress);
+        const snap = requireData(await ingestFromFiles(files, onProgress));
         handleRef.current = null;
         install(snap, "upload");
       } catch (err) {
@@ -145,7 +154,7 @@ function StaticSnapshotProvider({ children }: { children: React.ReactNode }) {
       try {
         setStatus("ingesting");
         setProgress(null);
-        const snap = await ingestFromSourceFiles(files, onProgress);
+        const snap = requireData(await ingestFromSourceFiles(files, onProgress));
         handleRef.current = null;
         install(snap, "upload");
       } catch (err) {
@@ -174,7 +183,7 @@ function StaticSnapshotProvider({ children }: { children: React.ReactNode }) {
       if (source === "folder" && handleRef.current) {
         setStatus("ingesting");
         if (!(await ensureReadPermission(handleRef.current))) throw new Error("Read permission was denied.");
-        install(await ingestFromHandle(handleRef.current, onProgress), "folder");
+        install(requireData(await ingestFromHandle(handleRef.current, onProgress)), "folder");
       } else if (source === "demo") {
         install(await loadDemoSnapshot(), "demo");
       }
@@ -209,7 +218,7 @@ function StaticSnapshotProvider({ children }: { children: React.ReactNode }) {
           return;
         }
         setStatus("ingesting");
-        const snap = await ingestFromHandle(handle, onProgress);
+        const snap = requireData(await ingestFromHandle(handle, onProgress));
         if (cancelled) return;
         handleRef.current = handle;
         install(snap, "folder");

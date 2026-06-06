@@ -35,20 +35,42 @@ export type ProgressFn = (p: IngestProgress) => void;
 const isData = (name: string) => name.endsWith(".jsonl") || name.endsWith(".meta.json");
 const basename = (relPath: string) => relPath.split("/").pop() ?? relPath;
 
+// The CLI data folders. Because ~/.claude and ~/.codex are HIDDEN dot-folders
+// that the OS file picker won't show, most people can't select them directly —
+// so we let them pick their (visible) home folder and step only into these
+// folders, never scanning the rest of the disk.
+const DATA_DIRS = new Set([".claude", ".codex", "projects", "sessions"]);
+
 // ── collection ────────────────────────────────────────────────────────────
 
-/** Recursively walk a directory handle, collecting .jsonl / .meta.json files. */
+/**
+ * Walk a directory handle collecting .jsonl / .meta.json files. From a
+ * non-data location we descend ONLY into the CLI data folders (so picking your
+ * home folder locates ~/.claude & ~/.codex without reading everything else);
+ * once inside a data tree we walk it fully. Data files at the picked level are
+ * always collected (e.g. history.jsonl when you pick .claude itself).
+ */
 export async function walkDirectory(
   handle: FileSystemDirectoryHandle,
   onProgress?: ProgressFn,
   prefix = "",
   out: SourceFile[] = [],
+  insideData = false,
 ): Promise<SourceFile[]> {
   // @ts-expect-error — values() async-iterator is not yet in the TS DOM lib
   for await (const entry of handle.values() as AsyncIterable<FileSystemHandle>) {
     const relPath = prefix ? `${prefix}/${entry.name}` : entry.name;
     if (entry.kind === "directory") {
-      await walkDirectory(entry as FileSystemDirectoryHandle, onProgress, relPath, out);
+      const dataDir = DATA_DIRS.has(entry.name);
+      if (insideData || dataDir) {
+        await walkDirectory(
+          entry as FileSystemDirectoryHandle,
+          onProgress,
+          relPath,
+          out,
+          insideData || dataDir,
+        );
+      }
     } else if (isData(entry.name)) {
       const fh = entry as FileSystemFileHandle;
       out.push({ relPath, read: async () => (await fh.getFile()).text() });

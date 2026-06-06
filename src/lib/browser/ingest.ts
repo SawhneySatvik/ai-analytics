@@ -34,12 +34,20 @@ export async function ingestFromFiles(files: File[] | FileList, onProgress?: Pro
   return ingestSourceFiles(filesToSourceFiles(files), onProgress);
 }
 
-/** Show the directory picker and return the granted handle (Chromium only). */
+/**
+ * Show the directory picker and return the granted handle (Chromium only).
+ * Opens at the home folder — since ~/.claude / ~/.codex are hidden, the easiest
+ * path for most people is to select home and let walkDirectory find them inside.
+ */
 export async function pickDirectory(): Promise<FileSystemDirectoryHandle> {
   const picker = (window as unknown as {
-    showDirectoryPicker: (opts?: { mode?: string }) => Promise<FileSystemDirectoryHandle>;
+    showDirectoryPicker: (opts?: {
+      mode?: string;
+      startIn?: string;
+      id?: string;
+    }) => Promise<FileSystemDirectoryHandle>;
   }).showDirectoryPicker;
-  return picker({ mode: "read" });
+  return picker({ mode: "read", startIn: "home", id: "agentmon-data" });
 }
 
 /** Load the bundled synthetic demo snapshot (public/demo-snapshot.json). */
