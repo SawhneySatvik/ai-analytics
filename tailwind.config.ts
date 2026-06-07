@@ -14,6 +14,19 @@ const config: Config = {
         accent: "hsl(var(--accent))",
         "accent-soft": "hsl(var(--accent-soft))",
         success: "hsl(var(--success))",
+        // shadcn / 21st.dev bridge tokens — read the aliases declared in
+        // globals.css :root (which map onto the channel vars above). Existing
+        // tokens are left untouched; `accent` deliberately stays the brand color.
+        background: "hsl(var(--background))",
+        foreground: "hsl(var(--foreground))",
+        card: { DEFAULT: "hsl(var(--card))", foreground: "hsl(var(--card-foreground))" },
+        popover: { DEFAULT: "hsl(var(--popover))", foreground: "hsl(var(--popover-foreground))" },
+        primary: { DEFAULT: "hsl(var(--primary))", foreground: "hsl(var(--primary-foreground))" },
+        secondary: { DEFAULT: "hsl(var(--secondary))", foreground: "hsl(var(--secondary-foreground))" },
+        muted: { DEFAULT: "hsl(var(--muted))", foreground: "hsl(var(--muted-foreground))" },
+        destructive: { DEFAULT: "hsl(var(--destructive))", foreground: "hsl(var(--destructive-foreground))" },
+        input: "hsl(var(--input))",
+        ring: "hsl(var(--ring))",
       },
       fontFamily: {
         sans: ["var(--font-geist-sans)", "system-ui", "sans-serif"],
@@ -43,10 +56,22 @@ const config: Config = {
         shimmer: {
           "100%": { transform: "translateX(100%)" },
         },
+        // Ported from the MagicUI marquee registry component (v4 ships these in a
+        // @theme block that Tailwind v3 ignores) so the strip actually scrolls.
+        marquee: {
+          from: { transform: "translateX(0)" },
+          to: { transform: "translateX(calc(-100% - var(--gap)))" },
+        },
+        "marquee-vertical": {
+          from: { transform: "translateY(0)" },
+          to: { transform: "translateY(calc(-100% - var(--gap)))" },
+        },
       },
       animation: {
         "fade-rise": "fade-rise 0.55s cubic-bezier(0.22, 1, 0.36, 1) both",
         "pop-in": "pop-in 0.16s ease-out both",
+        marquee: "marquee var(--duration, 40s) linear infinite",
+        "marquee-vertical": "marquee-vertical var(--duration, 40s) linear infinite",
       },
     },
   },

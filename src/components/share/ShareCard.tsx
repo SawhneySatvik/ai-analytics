@@ -1,7 +1,7 @@
 "use client";
 
 import { forwardRef } from "react";
-import { Activity } from "lucide-react";
+import { Logo } from "@/components/Logo";
 
 import { RATIOS, type ShareRatio, type ShareStats, type ShareTemplate } from "@/lib/share";
 import { derivePersona, nextMilestone } from "@/lib/badges";
@@ -570,10 +570,10 @@ export const ShareCard = forwardRef<HTMLDivElement, ShareCardProps>(function Sha
                 boxShadow: "inset 0 0 0 1px hsl(var(--accent) / 0.35)",
               }}
             >
-              <Activity style={{ width: s.foot * 1.1, height: s.foot * 1.1 }} className="text-accent" />
+              <Logo size={s.foot * 1.25} className="text-accent" eyeFill="hsl(var(--bg-elev))" />
             </div>
             <div style={{ fontSize: s.foot * 0.82, letterSpacing: "0.14em" }} className="font-mono uppercase text-fg-muted">
-              CLI Usage Analytics <span className="text-fg-muted/50">·</span> local · on-device
+              agentmon <span className="text-fg-muted/50">·</span> local · on-device
             </div>
           </div>
           <div style={{ fontSize: s.foot * 0.82, letterSpacing: "0.14em" }} className="font-mono uppercase text-fg-muted">

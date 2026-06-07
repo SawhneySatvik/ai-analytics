@@ -1,7 +1,8 @@
 "use client";
 
+import { useEffect } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import {
   Activity,
   Award,
@@ -19,15 +20,17 @@ import {
 } from "lucide-react";
 
 import { useDashboard } from "./dashboard-context";
-import { useSnapshot } from "./snapshot-provider";
+import { STATIC_MODE, useSnapshot } from "./snapshot-provider";
+import { ProgressView } from "./marketing/ProgressView";
 import { Attribution } from "./Attribution";
+import { Logo } from "./Logo";
 import { FilterBar } from "./FilterBar";
 import { ThemeMenu } from "./ThemeMenu";
 import { cn } from "@/lib/utils";
 import { relativeTime } from "@/lib/format";
 
 const NAV = [
-  { href: "/", label: "Overview", icon: LayoutDashboard },
+  { href: "/overview", label: "Overview", icon: LayoutDashboard },
   { href: "/sources", label: "Tools", icon: Layers },
   { href: "/models", label: "Models", icon: Boxes },
   { href: "/projects", label: "Projects", icon: FolderGit2 },
@@ -40,7 +43,9 @@ const NAV = [
 ];
 
 function isActive(pathname: string, href: string): boolean {
-  if (href === "/") return pathname === "/";
+  // In the local SSR build `/` renders the Overview, so treat it as the
+  // Overview route for nav highlighting / the header title.
+  if (href === "/overview") return pathname === "/overview" || pathname === "/";
   return pathname === href || pathname.startsWith(href + "/");
 }
 
@@ -174,8 +179,35 @@ function Warnings() {
   );
 }
 
+/**
+ * Hosted-build guard for dashboard routes: render the page only once an
+ * on-device snapshot is ready. While a saved folder restores, show progress;
+ * with nothing connected, bounce back to the landing to connect. Inert (renders
+ * children straight through) in the local SSR build, where data comes from /api.
+ */
+function DashboardGate({ children }: { children: React.ReactNode }) {
+  const { mode, status, snapshot } = useSnapshot();
+  const router = useRouter();
+  const needsConnect =
+    mode === "static" && status !== "ready" && status !== "ingesting" && status !== "restoring";
+
+  useEffect(() => {
+    if (needsConnect) router.replace("/");
+  }, [needsConnect, router]);
+
+  if (mode !== "static") return <>{children}</>;
+  if (status === "ready" && snapshot) return <>{children}</>;
+  if (status === "ingesting" || status === "restoring") return <ProgressView />;
+  return null; // redirecting to the landing to connect
+}
+
 export function Shell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
+
+  // Hosted build: the landing owns the whole screen (its own header/footer), so
+  // skip the dashboard chrome on `/`. Local SSR keeps the chrome — `/` is the app.
+  if (STATIC_MODE && pathname === "/") return <>{children}</>;
+
   return (
     <div className="min-h-screen">
       {/* sidebar (lg+) */}
@@ -183,10 +215,10 @@ export function Shell({ children }: { children: React.ReactNode }) {
         <div className="px-2 pb-6">
           <div className="flex items-center gap-2.5">
             <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-gradient-to-br from-accent/30 to-accent/5 text-accent shadow-card ring-1 ring-inset ring-accent/25">
-              <Activity className="h-4 w-4" />
+              <Logo size={18} />
             </div>
             <div>
-              <div className="text-sm font-semibold tracking-tight text-fg">CLI Usage</div>
+              <div className="text-sm font-semibold tracking-tight text-fg">agentmon</div>
               <div className="font-mono text-[9px] uppercase tracking-[0.18em] text-fg-muted">
                 local analytics
               </div>
@@ -208,8 +240,8 @@ export function Shell({ children }: { children: React.ReactNode }) {
           <header className="relative z-30 border-b border-border bg-bg/70 backdrop-blur-xl after:pointer-events-none after:absolute after:inset-x-0 after:bottom-0 after:h-px after:bg-gradient-to-r after:from-transparent after:via-accent/25 after:to-transparent">
             <div className="flex items-center justify-between gap-4 px-4 py-3 lg:px-6">
               <div className="flex items-center gap-2 lg:hidden">
-                <Activity className="h-4 w-4 text-accent" />
-                <span className="text-sm font-semibold text-fg">CLI Usage</span>
+                <Logo size={16} className="text-accent" />
+                <span className="text-sm font-semibold text-fg">agentmon</span>
               </div>
               <h1 className="hidden text-sm font-semibold tracking-tight text-fg lg:block">
                 {activeLabel(pathname)}
@@ -231,7 +263,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
         <Warnings />
 
         <main key={pathname} className="container-wide py-6 motion-safe:animate-fade-rise">
-          {children}
+          <DashboardGate>{children}</DashboardGate>
         </main>
       </div>
     </div>
