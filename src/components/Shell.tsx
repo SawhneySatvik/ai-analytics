@@ -1,7 +1,8 @@
 "use client";
 
+import { useEffect } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import {
   Activity,
   Award,
@@ -19,7 +20,8 @@ import {
 } from "lucide-react";
 
 import { useDashboard } from "./dashboard-context";
-import { useSnapshot } from "./snapshot-provider";
+import { STATIC_MODE, useSnapshot } from "./snapshot-provider";
+import { ProgressView } from "./marketing/ProgressView";
 import { Attribution } from "./Attribution";
 import { Logo } from "./Logo";
 import { FilterBar } from "./FilterBar";
@@ -28,7 +30,7 @@ import { cn } from "@/lib/utils";
 import { relativeTime } from "@/lib/format";
 
 const NAV = [
-  { href: "/", label: "Overview", icon: LayoutDashboard },
+  { href: "/overview", label: "Overview", icon: LayoutDashboard },
   { href: "/sources", label: "Tools", icon: Layers },
   { href: "/models", label: "Models", icon: Boxes },
   { href: "/projects", label: "Projects", icon: FolderGit2 },
@@ -41,7 +43,9 @@ const NAV = [
 ];
 
 function isActive(pathname: string, href: string): boolean {
-  if (href === "/") return pathname === "/";
+  // In the local SSR build `/` renders the Overview, so treat it as the
+  // Overview route for nav highlighting / the header title.
+  if (href === "/overview") return pathname === "/overview" || pathname === "/";
   return pathname === href || pathname.startsWith(href + "/");
 }
 
@@ -175,8 +179,35 @@ function Warnings() {
   );
 }
 
+/**
+ * Hosted-build guard for dashboard routes: render the page only once an
+ * on-device snapshot is ready. While a saved folder restores, show progress;
+ * with nothing connected, bounce back to the landing to connect. Inert (renders
+ * children straight through) in the local SSR build, where data comes from /api.
+ */
+function DashboardGate({ children }: { children: React.ReactNode }) {
+  const { mode, status, snapshot } = useSnapshot();
+  const router = useRouter();
+  const needsConnect =
+    mode === "static" && status !== "ready" && status !== "ingesting" && status !== "restoring";
+
+  useEffect(() => {
+    if (needsConnect) router.replace("/");
+  }, [needsConnect, router]);
+
+  if (mode !== "static") return <>{children}</>;
+  if (status === "ready" && snapshot) return <>{children}</>;
+  if (status === "ingesting" || status === "restoring") return <ProgressView />;
+  return null; // redirecting to the landing to connect
+}
+
 export function Shell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
+
+  // Hosted build: the landing owns the whole screen (its own header/footer), so
+  // skip the dashboard chrome on `/`. Local SSR keeps the chrome — `/` is the app.
+  if (STATIC_MODE && pathname === "/") return <>{children}</>;
+
   return (
     <div className="min-h-screen">
       {/* sidebar (lg+) */}
@@ -232,7 +263,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
         <Warnings />
 
         <main key={pathname} className="container-wide py-6 motion-safe:animate-fade-rise">
-          {children}
+          <DashboardGate>{children}</DashboardGate>
         </main>
       </div>
     </div>

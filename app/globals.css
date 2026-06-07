@@ -49,6 +49,35 @@
     color-scheme: dark;
   }
 
+  /* ── shadcn / 21st.dev token bridge ───────────────────────────────────────
+     Maps shadcn's expected CSS-var names onto this app's existing channel vars.
+     Declared once in :root; it resolves per-theme automatically because every
+     value points at a token each [data-theme] already overrides (the cascade
+     does the work — do NOT repeat this per theme). Values are RAW HSL CHANNELS
+     to match this project's convention, so `hsl(var(--background))` resolves.
+     Note: this app's `--accent` is the BRAND color (= shadcn's `--primary`);
+     shadcn's own `--accent` (a subtle hover surface) is intentionally left
+     unmapped, and no `accent` color is added to the Tailwind config. No
+     `--radius` is defined, so `borderRadius` is never overridden app-wide. */
+  :root {
+    --background: var(--bg);
+    --foreground: var(--fg);
+    --card: var(--bg-elev);
+    --card-foreground: var(--fg);
+    --popover: var(--bg-elev);
+    --popover-foreground: var(--fg);
+    --primary: var(--accent);
+    --primary-foreground: var(--bg);
+    --secondary: var(--bg-elev);
+    --secondary-foreground: var(--fg);
+    --muted: var(--bg-elev);
+    --muted-foreground: var(--fg-muted);
+    --destructive: 0 72% 51%;
+    --destructive-foreground: var(--fg);
+    --input: var(--border);
+    --ring: var(--accent);
+  }
+
   /* Nord — cool polar-night slate, frost-blue accent. */
   [data-theme="nord"] {
     --bg: 220 17% 11%;
@@ -191,6 +220,23 @@
     font-variant-numeric: tabular-nums;
   }
 
+  /* A slow diagonal sheen sweep for primary CTAs (reuses the shimmer keyframe).
+     The highlight starts and ends off-screen, so the loop restart is invisible.
+     Suppressed automatically by the reduced-motion rule above. */
+  .shine {
+    position: relative;
+    overflow: hidden;
+  }
+  .shine::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(110deg, transparent 35%, hsl(0 0% 100% / 0.22) 50%, transparent 65%);
+    transform: translateX(-120%);
+    animation: shimmer 3.2s ease-in-out infinite;
+    pointer-events: none;
+  }
+
   /* Shimmer skeleton — a moving highlight sweep instead of a bare pulse. */
   .skeleton {
     position: relative;
@@ -241,5 +287,24 @@
   .recharts-pie-sector path {
     stroke: hsl(var(--bg-elev));
     stroke-width: 1.5px;
+  }
+}
+
+@theme inline {
+  @keyframes marquee {
+  from {
+    transform: translateX(0);
+    }
+  to {
+    transform: translateX(calc(-100% - var(--gap)));
+    }
+  }
+  @keyframes marquee-vertical {
+  from {
+    transform: translateY(0);
+    }
+  to {
+    transform: translateY(calc(-100% - var(--gap)));
+    }
   }
 }

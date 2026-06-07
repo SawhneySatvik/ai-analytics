@@ -2,46 +2,26 @@
 
 // The hosted (static-build) entry screen — a full marketing landing page that
 // doubles as the data-connect gate. Un-connected visitors get the pitch + live
-// previews + the connect CTA; once data is connected the provider swaps this for
-// the dashboard. (Local SSR never renders this — it goes straight to the app.)
+// previews + the connect CTA; a fresh connect advances to /overview, while a
+// returning (restored) visitor stays here and sees the "connected" state.
+// (Local SSR never renders this — it goes straight to the dashboard.)
 
-import { ArrowDown, Loader2, Star } from "lucide-react";
-import { MotionConfig } from "framer-motion";
+import { useEffect, useRef } from "react";
+import { useRouter } from "next/navigation";
+import { ArrowDown, Star } from "lucide-react";
+import { MotionConfig, motion, useScroll, useTransform } from "framer-motion";
 
 import { useSnapshot } from "@/components/snapshot-provider";
 import { Logo } from "@/components/Logo";
 import { ThemeMenu } from "@/components/ThemeMenu";
 import { ConnectCard } from "@/components/marketing/ConnectCard";
+import { ProgressView } from "@/components/marketing/ProgressView";
 import { Showcase } from "@/components/marketing/Showcase";
-import { MarketingSections } from "@/components/marketing/sections";
-import { motion, fadeUp, stagger } from "@/components/marketing/motion";
+import { MarketingSections, StatBand } from "@/components/marketing/sections";
+import { HeroMock } from "@/components/marketing/fx/HeroMock";
+import { Aurora } from "@/components/marketing/fx/Aurora";
+import { fadeUp, stagger } from "@/components/marketing/motion";
 import { GITHUB_REPO, STAR_TEXT } from "@/lib/links";
-
-function ProgressView() {
-  const { status, progress } = useSnapshot();
-  const label = status === "restoring" ? "Reconnecting to your folder…" : "Reading your usage on-device…";
-  const pct = progress && progress.total > 0 ? Math.round((progress.done / progress.total) * 100) : null;
-  return (
-    <div className="flex min-h-screen items-center justify-center px-4">
-      <div className="w-full max-w-sm space-y-4 text-center">
-        <Loader2 className="mx-auto h-7 w-7 animate-spin text-accent" />
-        <div className="text-sm font-medium text-fg">{label}</div>
-        {progress && progress.total > 0 && (
-          <div className="space-y-2">
-            <div className="h-1.5 w-full overflow-hidden rounded-full bg-bg-elev">
-              <div className="h-full rounded-full bg-accent transition-all" style={{ width: `${pct}%` }} />
-            </div>
-            <div className="font-mono text-[11px] text-fg-muted">
-              {progress.done.toLocaleString()} / {progress.total.toLocaleString()} files
-              {progress.phase === "finalizing" ? " · aggregating…" : ""}
-            </div>
-          </div>
-        )}
-        {progress?.label && <div className="truncate font-mono text-[10px] text-fg-muted/70">{progress.label}</div>}
-      </div>
-    </div>
-  );
-}
 
 function Background() {
   return (
@@ -57,16 +37,25 @@ function Background() {
           WebkitMaskImage: "radial-gradient(120% 80% at 50% 0%, #000 35%, transparent 80%)",
         }}
       />
-      {/* accent atmosphere */}
+      {/* drifting accent mesh, confined to the top of the page */}
+      <Aurora className="h-[90vh]" />
+      {/* flat accent wash at the very top */}
       <div
         className="absolute inset-x-0 top-0 h-[60vh]"
-        style={{ background: "radial-gradient(60% 50% at 50% -5%, hsl(var(--accent) / 0.16), transparent 70%)" }}
+        style={{ background: "radial-gradient(60% 50% at 50% -5%, hsl(var(--accent) / 0.12), transparent 70%)" }}
       />
     </div>
   );
 }
 
+const NAV_LINKS = [
+  { href: "#features", label: "Features" },
+  { href: "#showcase", label: "Showcase" },
+  { href: "#run", label: "Run it" },
+];
+
 function TopBar() {
+  const { scrollYProgress } = useScroll();
   return (
     <header className="sticky top-0 z-40 border-b border-border/60 bg-bg/70 backdrop-blur-xl">
       <div className="mx-auto flex w-full max-w-5xl items-center justify-between px-4 py-3">
@@ -79,6 +68,17 @@ function TopBar() {
             local analytics
           </span>
         </a>
+        <nav className="hidden items-center gap-1 md:flex">
+          {NAV_LINKS.map((l) => (
+            <a
+              key={l.href}
+              href={l.href}
+              className="rounded-lg px-3 py-1.5 text-sm text-fg-muted transition-colors hover:bg-bg-elev/70 hover:text-fg"
+            >
+              {l.label}
+            </a>
+          ))}
+        </nav>
         <div className="flex items-center gap-2">
           <a
             href={GITHUB_REPO}
@@ -91,17 +91,22 @@ function TopBar() {
           <ThemeMenu />
         </div>
       </div>
+      {/* scroll-progress hairline */}
+      <motion.div
+        className="absolute inset-x-0 bottom-0 h-px origin-left bg-gradient-to-r from-transparent via-accent to-accent/40"
+        style={{ scaleX: scrollYProgress }}
+      />
     </header>
   );
 }
 
-function Hero() {
+function Hero({ onConnect }: { onConnect: () => void }) {
   return (
-    <section id="top" className="mx-auto w-full max-w-3xl px-4 pb-10 pt-16 text-center sm:pt-24">
-      <motion.div variants={stagger} initial="hidden" animate="show">
+    <section id="top" className="relative mx-auto w-full max-w-5xl px-4 pb-16 pt-14 sm:pt-20">
+      <motion.div variants={stagger} initial="hidden" animate="show" className="mx-auto max-w-3xl text-center">
         <motion.div variants={fadeUp} className="mb-5 flex justify-center">
           <span className="inline-flex items-center gap-2 rounded-full border border-border bg-bg-elev/60 px-3 py-1 font-mono text-[10px] uppercase tracking-[0.16em] text-fg-muted backdrop-blur">
-            <span className="h-1.5 w-1.5 rounded-full bg-accent" />
+            <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-accent" />
             Claude Code · Codex · OpenCode
           </span>
         </motion.div>
@@ -111,7 +116,10 @@ function Hero() {
           className="text-balance text-4xl font-semibold leading-[1.05] tracking-tight text-fg sm:text-5xl md:text-6xl"
         >
           Your AI coding usage,
-          <br className="hidden sm:block" /> <span className="text-accent">beautifully measured.</span>
+          <br className="hidden sm:block" />{" "}
+          <span className="bg-gradient-to-r from-accent via-fg to-accent bg-clip-text text-transparent">
+            beautifully measured.
+          </span>
         </motion.h1>
 
         <motion.p variants={fadeUp} className="mx-auto mt-5 max-w-xl text-pretty text-base leading-relaxed text-fg-muted">
@@ -120,7 +128,7 @@ function Hero() {
         </motion.p>
 
         <motion.div variants={fadeUp} className="mx-auto mt-8 max-w-md">
-          <ConnectCard />
+          <ConnectCard onConnect={onConnect} />
         </motion.div>
 
         <motion.div
@@ -135,12 +143,35 @@ function Hero() {
           </a>
         </motion.div>
       </motion.div>
+
+      <motion.div
+        initial={{ opacity: 0, y: 36 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.85, delay: 0.35, ease: [0.16, 1, 0.3, 1] }}
+        className="mt-14 sm:mt-16"
+      >
+        <HeroMock />
+      </motion.div>
     </section>
   );
 }
 
 export function Landing() {
-  const { status } = useSnapshot();
+  const { status, snapshot } = useSnapshot();
+  const router = useRouter();
+  // Only a user-initiated connect (set on the CTA click) advances into the
+  // dashboard. A silently restored folder leaves a returning visitor on the
+  // landing — they're greeted with the "you're connected" state instead.
+  const pendingNav = useRef(false);
+
+  useEffect(() => {
+    if (status === "ready" && snapshot && pendingNav.current) {
+      pendingNav.current = false;
+      router.push("/overview");
+    }
+    if (status === "error") pendingNav.current = false;
+  }, [status, snapshot, router]);
+
   if (status === "ingesting" || status === "restoring") return <ProgressView />;
 
   return (
@@ -148,8 +179,13 @@ export function Landing() {
       <div className="relative min-h-screen overflow-x-hidden">
         <Background />
         <TopBar />
-        <Hero />
-        <div id="showcase" className="scroll-mt-20 pb-20 pt-6 sm:pb-28">
+        <Hero
+          onConnect={() => {
+            pendingNav.current = true;
+          }}
+        />
+        <StatBand />
+        <div id="showcase" className="scroll-mt-20 py-16 sm:py-24">
           <Showcase />
         </div>
         <MarketingSections />

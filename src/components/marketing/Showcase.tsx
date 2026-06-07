@@ -11,6 +11,7 @@ import { Monitor, TerminalSquare } from "lucide-react";
 import { WebPreview } from "./WebPreview";
 import { TuiPreview } from "./TuiPreview";
 import { Reveal } from "./motion";
+import { BorderBeam } from "./fx/border-beam";
 
 type Tab = "web" | "tui";
 
@@ -68,17 +69,20 @@ export function Showcase() {
             className="pointer-events-none absolute -inset-x-6 -top-6 bottom-0 -z-10 rounded-[2rem] opacity-60 blur-2xl"
             style={{ background: "radial-gradient(60% 50% at 50% 0%, hsl(var(--accent) / 0.18), transparent 70%)" }}
           />
-          <AnimatePresence mode="wait">
-            <motion.div
-              key={tab}
-              initial={{ opacity: 0, y: 12, scale: 0.99 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, y: -8, scale: 0.99 }}
-              transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
-            >
-              {tab === "web" ? <WebPreview /> : <TuiPreview />}
-            </motion.div>
-          </AnimatePresence>
+          <div className="relative rounded-2xl">
+            <BorderBeam size={70} duration={9} />
+            <AnimatePresence mode="wait">
+              <motion.div
+                key={tab}
+                initial={{ opacity: 0, y: 12, scale: 0.99 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, y: -8, scale: 0.99 }}
+                transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
+              >
+                {tab === "web" ? <WebPreview /> : <TuiPreview />}
+              </motion.div>
+            </AnimatePresence>
+          </div>
         </div>
       </Reveal>
     </section>

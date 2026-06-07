@@ -6,7 +6,19 @@
 // .jsonl picker, drag-drop, and the demo. Plus OS-aware "jump to ~/.claude" help.
 
 import { useEffect, useRef, useState } from "react";
-import { AlertTriangle, Check, Copy, FolderOpen, Play, Upload } from "lucide-react";
+import Link from "next/link";
+import {
+  AlertTriangle,
+  ArrowRight,
+  Check,
+  CircleCheck,
+  Copy,
+  Database,
+  FolderOpen,
+  FolderPlus,
+  Play,
+  Upload,
+} from "lucide-react";
 
 import { useSnapshot } from "@/components/snapshot-provider";
 import { sourceFilesFromDataTransfer } from "@/lib/browser/dropzone";
@@ -14,8 +26,29 @@ import { cn } from "@/lib/utils";
 
 type OS = "mac" | "windows" | "linux" | "other";
 
-export function ConnectCard() {
-  const { error, canPickDirectory, connectFolder, uploadFiles, dropSourceFiles, loadDemo } = useSnapshot();
+/** Human label for the connected data source — mirrors the header control. */
+function sourceLabel(source: string | null, folderCount: number): string {
+  if (source === "demo") return "demo data";
+  if (source === "upload") return "uploaded files";
+  if (folderCount > 1) return `${folderCount} folders`;
+  return "local folder";
+}
+
+export function ConnectCard({ onConnect }: { onConnect?: () => void }) {
+  const {
+    status,
+    snapshot,
+    source,
+    folderCount,
+    error,
+    canPickDirectory,
+    connectFolder,
+    addFolder,
+    uploadFiles,
+    dropSourceFiles,
+    loadDemo,
+    disconnect,
+  } = useSnapshot();
   const [dragging, setDragging] = useState(false);
   const [os, setOs] = useState<OS>("other");
   const [copied, setCopied] = useState<string | null>(null);
@@ -64,7 +97,54 @@ export function ConnectCard() {
     e.preventDefault();
     setDragging(false);
     const files = await sourceFilesFromDataTransfer(e.dataTransfer);
-    if (files.length) void dropSourceFiles(files);
+    if (files.length) {
+      onConnect?.();
+      void dropSourceFiles(files);
+    }
+  }
+
+  // Already connected (e.g. a returning visitor whose folder was restored): the
+  // landing stays the front door, but the CTA becomes a way into the dashboard.
+  if (status === "ready" && snapshot) {
+    return (
+      <div className="w-full">
+        <div className="rounded-2xl border border-border bg-bg-elev/50 p-4 shadow-card backdrop-blur-xl sm:p-5">
+          <div className="flex items-center justify-center gap-2 text-sm font-medium text-fg">
+            <CircleCheck className="h-4 w-4 text-emerald-500" />
+            You&apos;re connected
+            <span className="text-fg-muted">· {sourceLabel(source, folderCount)}</span>
+          </div>
+          <Link
+            href="/overview"
+            className="shine group mt-3 flex w-full items-center justify-center gap-2 rounded-xl bg-accent px-4 py-3 text-sm font-semibold text-bg shadow-pop transition-all hover:opacity-90 active:scale-[0.99]"
+          >
+            Open your dashboard
+            <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
+          </Link>
+          <div className="mt-3 flex items-center justify-center gap-4 text-xs text-fg-muted">
+            {source === "folder" && canPickDirectory && (
+              <button
+                type="button"
+                onClick={() => {
+                  onConnect?.();
+                  void addFolder();
+                }}
+                className="inline-flex items-center gap-1.5 transition-colors hover:text-accent"
+              >
+                <FolderPlus className="h-3.5 w-3.5" /> add another folder
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={() => void disconnect()}
+              className="inline-flex items-center gap-1.5 transition-colors hover:text-accent"
+            >
+              <Database className="h-3.5 w-3.5" /> use different data
+            </button>
+          </div>
+        </div>
+      </div>
+    );
   }
 
   return (
@@ -85,8 +165,11 @@ export function ConnectCard() {
           {canPickDirectory && (
             <button
               type="button"
-              onClick={() => void connectFolder()}
-              className="group flex w-full items-center justify-center gap-2 rounded-xl bg-accent px-4 py-3 text-sm font-semibold text-bg shadow-pop transition-all hover:opacity-90 active:scale-[0.99]"
+              onClick={() => {
+                onConnect?.();
+                void connectFolder();
+              }}
+              className="shine group flex w-full items-center justify-center gap-2 rounded-xl bg-accent px-4 py-3 text-sm font-semibold text-bg shadow-pop transition-all hover:opacity-90 active:scale-[0.99]"
             >
               <FolderOpen className="h-4 w-4" /> Connect your folder
               <span className="ml-0.5 transition-transform group-hover:translate-x-0.5">→</span>
@@ -171,7 +254,10 @@ export function ConnectCard() {
         <div className="mt-3 flex items-center justify-center gap-3 text-xs">
           <button
             type="button"
-            onClick={() => void loadDemo()}
+            onClick={() => {
+              onConnect?.();
+              void loadDemo();
+            }}
             className="inline-flex items-center gap-1.5 text-fg-muted transition-colors hover:text-accent"
           >
             <Play className="h-3.5 w-3.5" /> Try the live demo
@@ -196,7 +282,10 @@ export function ConnectCard() {
         className="hidden"
         onChange={(e) => {
           const f = e.target.files;
-          if (f?.length) void uploadFiles(f);
+          if (f?.length) {
+            onConnect?.();
+            void uploadFiles(f);
+          }
         }}
       />
       <input
@@ -208,7 +297,10 @@ export function ConnectCard() {
         className="hidden"
         onChange={(e) => {
           const f = e.target.files;
-          if (f?.length) void uploadFiles(f);
+          if (f?.length) {
+            onConnect?.();
+            void uploadFiles(f);
+          }
         }}
       />
     </div>

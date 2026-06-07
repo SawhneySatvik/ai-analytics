@@ -24,7 +24,6 @@ import {
 import { clearHandles, ensureReadPermission, loadHandles, saveHandles } from "@/lib/browser/idb";
 import { revalidateAll, setLocalResolver } from "@/lib/dataCache";
 import { resolveLocal } from "@/lib/staticResolve";
-import { Landing } from "@/components/Landing";
 
 /** Compile-time flag — true only in the hosted, browser-ingest build target. */
 export const STATIC_MODE = process.env.NEXT_PUBLIC_STATIC_MODE === "1";
@@ -287,11 +286,10 @@ function StaticSnapshotProvider({ children }: { children: React.ReactNode }) {
     [status, error, progress, source, snapshot, canPick, folderCount, connectFolder, addFolder, uploadFiles, dropSourceFiles, loadDemo, refresh, disconnect],
   );
 
-  return (
-    <Ctx.Provider value={value}>
-      {status === "ready" && snapshot ? children : <Landing />}
-    </Ctx.Provider>
-  );
+  // Routing — not connection state — decides what renders now: `/` is the
+  // Landing (front door), dashboard routes gate themselves on a ready snapshot
+  // (see Shell). The provider just exposes the snapshot to whatever is mounted.
+  return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }
 
 export function SnapshotProvider({ children }: { children: React.ReactNode }) {
