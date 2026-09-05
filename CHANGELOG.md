@@ -4,9 +4,10 @@ Notable changes to **agentmon** (the `agentmon` terminal CLI) and the web
 dashboard. This project follows [Semantic Versioning](https://semver.org).
 Everything is local-first — nothing leaves your machine.
 
-## [Unreleased] — pricing refresh
+## [0.1.1] — 2026-09-06 — pricing refresh
 
-Branched off the deployed `main`. Pricing-only: no source loaders, no UI work.
+`agentmon` CLI 0.1.1. Branched off the deployed `main`. Pricing-only: no source
+loaders, no UI work. (0.2.0 is reserved for the terminal-dashboard overhaul.)
 
 ### Fixed — models released since the last deploy were costing $0
 

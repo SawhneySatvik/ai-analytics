@@ -1,5 +1,5 @@
 // Author/links shown across the CLI (mirrors the web app's src/lib/links.ts).
-export const VERSION = "0.1.0";
+export const VERSION = "0.1.1";
 export const AUTHOR = "Satvik Sawhney";
 export const PORTFOLIO = "https://satviksawhney.vercel.app";
 export const GITHUB_REPO = "https://github.com/SawhneySatvik/ai-analytics";
