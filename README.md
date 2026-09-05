@@ -144,11 +144,28 @@ It reuses this repo's data layer (bundled in) and ships only `ink` + `react`. Se
   in-memory records, scoped by the global filters. The same pure response builders
   (`src/lib/responses.ts`) back both the API routes and the in-browser static client,
   so the numbers are identical everywhere.
-- **Cost** (`src/lib/pricing.ts`) is the single editable source of dollar estimates
-  for every tool — `PRICING` for Claude models, `OPENAI_PRICING` for Codex/GPT
-  models. Transcripts record no usable cost, so it is computed from token counts.
-  ⚠️ The rates are placeholders patterned on public pricing ratios — update them to
-  the exact public `$/MTok` before trusting absolute dollar figures.
+- **Cost** (`src/lib/pricing.ts`) is the single source of dollar estimates for every
+  tool — `PRICING` for Claude models, `OPENAI_PRICING` for Codex/GPT models, and
+  `OSS_PRICING` for open-weight models. Transcripts record no usable cost, so it is
+  computed from token counts.
+
+  Every rate is **verified against the vendor's own public pricing page**, with the
+  source URL and fetch date cited inline per block (Anthropic, OpenAI, DeepSeek,
+  Moonshot, Z.ai, Alibaba; fetched 2026-09-06). Open-weight models have no single
+  price — the weights are free and every host charges differently — so each is quoted
+  at its **maker's first-party API**, the same basis used for Anthropic and OpenAI. A
+  model run locally has no marginal token cost, and OpenCode's recorded `cost: 0` for
+  those is used as-is, so local stays free.
+
+  A model that is **not** in these tables contributes `$0` and raises a visible
+  "unpriced model" warning rather than being charged a guessed rate — the app never
+  invents spend. Adding a Claude model means adding it to `canonicalizeModel()` in
+  `models.ts` too: that lookup is the only per-model map the compiler cannot force
+  you to update, and a model missing from it silently falls through to `$0`.
+
+  Not modelled, because transcripts do not record which tier a request used:
+  OpenAI long-context (>272k input) and fast-mode premiums, and DeepSeek's 2× peak
+  window. All three make estimates conservative rather than overstated.
 
 ## Config
 

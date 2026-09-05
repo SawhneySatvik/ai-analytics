@@ -78,7 +78,7 @@ export function finalizeSnapshot(
   messages.sort((a, b) => a.ts - b.ts);
 
   for (const { provider, label, tokens } of unpriced.values()) {
-    const table = provider === "anthropic" ? "PRICING" : "OPENAI_PRICING";
+    const table = provider === "anthropic" ? "PRICING" : "OPENAI_PRICING / OSS_PRICING";
     warnings.push(
       `${tokens.toLocaleString("en-US")} tokens on unpriced model "${label}" — add it to ${table} for accurate cost.`,
     );

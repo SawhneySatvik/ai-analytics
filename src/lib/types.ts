@@ -3,10 +3,26 @@
 // ───────────────────────────────────────────────────────────────────────────
 
 export type CanonicalModel =
+  // current lineup
+  | "fable-5-1"
+  | "mythos-5-1"
+  | "opus-5"
+  | "sonnet-5"
+  | "haiku-4-5"
+  // legacy (still callable)
+  | "fable-5"
+  | "mythos-5"
   | "opus-4-8"
   | "opus-4-7"
+  | "opus-4-6"
+  | "opus-4-5"
   | "sonnet-4-6"
-  | "haiku-4-5"
+  | "sonnet-4-5"
+  // retired, but still present in older transcripts
+  | "opus-4-1"
+  | "opus-4"
+  | "sonnet-4"
+  | "haiku-3-5"
   | "synthetic"
   | "unknown";
 
